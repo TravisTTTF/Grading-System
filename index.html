@@ -3,1714 +3,666 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Multi-Agent Engineering Report Grading System</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-        
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            overflow: hidden;
-        }
-        
-        .header {
-            background: linear-gradient(45deg, #4facfe 0%, #00f2fe 100%);
-            color: white;
-            padding: 30px;
-            text-align: center;
-        }
-        
-        .header h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
-            font-weight: 300;
-        }
-        
-        .header p {
-            font-size: 1.1em;
-            opacity: 0.9;
-        }
-        
-        .status-indicator {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: bold;
-        }
-        
-        .status-live {
-            background: #4caf50;
-            color: white;
-        }
-        
-        .status-demo {
-            background: #ff9800;
-            color: white;
-        }
-        
-        .main-content {
-            padding: 40px;
-        }
-        
-        .upload-section {
-            border: 3px dashed #ddd;
-            border-radius: 10px;
-            padding: 40px;
-            text-align: center;
-            margin-bottom: 30px;
-            transition: all 0.3s ease;
-            cursor: pointer;
-        }
-        
-        .upload-section:hover {
-            border-color: #4facfe;
-            background-color: #f8fdff;
-        }
-        
-        .upload-section.dragover {
-            border-color: #4facfe;
-            background-color: #f0f9ff;
-        }
-        
-        .upload-icon {
-            font-size: 4em;
-            color: #ddd;
-            margin-bottom: 20px;
-        }
-        
-        .upload-text {
-            font-size: 1.2em;
-            color: #666;
-            margin-bottom: 20px;
-        }
-        
-        #fileInput {
-            display: none;
-        }
-        
-        .btn {
-            background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            padding: 12px 30px;
-            border-radius: 25px;
-            cursor: pointer;
-            font-size: 16px;
-            transition: transform 0.2s ease;
-            margin: 5px;
-        }
-        
-        .btn:hover {
-            transform: translateY(-2px);
-        }
-        
-        .btn:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-            transform: none;
-        }
-        
-        .btn-secondary {
-            background: linear-gradient(45deg, #ff6b6b 0%, #ffa726 100%);
-        }
-        
-        .btn-success {
-            background: linear-gradient(45deg, #4caf50 0%, #66bb6a 100%);
-        }
-        
-        .file-info {
-            background: #f8f9fa;
-            border-radius: 10px;
-            padding: 20px;
-            margin: 20px 0;
-            display: none;
-        }
-        
-        .config-section {
-            margin-top: 30px;
-            display: none;
-        }
-        
-        .config-tabs {
-            display: flex;
-            border-bottom: 2px solid #eee;
-            margin-bottom: 20px;
-        }
-        
-        .tab {
-            padding: 15px 25px;
-            cursor: pointer;
-            border-bottom: 3px solid transparent;
-            transition: all 0.3s ease;
-        }
-        
-        .tab.active {
-            border-bottom-color: #4facfe;
-            color: #4facfe;
-            font-weight: bold;
-        }
-        
-        .tab-content {
-            display: none;
-        }
-        
-        .tab-content.active {
-            display: block;
-        }
-        
-        .criteria-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 20px;
-            margin: 20px 0;
-        }
-        
-        .criteria-card {
-            background: #f8f9fa;
-            border-radius: 10px;
-            padding: 20px;
-            border-left: 4px solid #4facfe;
-        }
-        
-        .criteria-card h3 {
-            color: #333;
-            margin-bottom: 10px;
-        }
-        
-        .score-input {
-            width: 100%;
-            padding: 10px;
-            border: 2px solid #ddd;
-            border-radius: 5px;
-            margin: 10px 0;
-        }
-        
-        .textarea-input {
-            width: 100%;
-            min-height: 100px;
-            padding: 10px;
-            border: 2px solid #ddd;
-            border-radius: 5px;
-            margin: 10px 0;
-            resize: vertical;
-        }
-        
-        .agent-config {
-            background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
-            border-radius: 10px;
-            padding: 20px;
-            margin: 20px 0;
-        }
-        
-        .agent-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
-        }
-        
-        .agent-card {
-            background: white;
-            border-radius: 10px;
-            padding: 20px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-        }
-        
-        .agent-header {
-            display: flex;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-        
-        .agent-icon {
-            font-size: 2em;
-            margin-right: 15px;
-        }
-        
-        .custom-metrics {
-            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
-            border-radius: 10px;
-            padding: 20px;
-            margin: 20px 0;
-        }
-        
-        .metric-item {
-            background: white;
-            border-radius: 8px;
-            padding: 15px;
-            margin: 10px 0;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-        
-        .grading-section {
-            text-align: center;
-            margin: 30px 0;
-        }
-        
-        .loading {
-            display: none;
-            text-align: center;
-            margin: 20px 0;
-        }
-        
-        .spinner {
-            width: 40px;
-            height: 40px;
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #4facfe;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 20px;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
-        .agent-progress {
-            background: #f0f0f0;
-            border-radius: 10px;
-            padding: 15px;
-            margin: 10px 0;
-        }
-        
-        .progress-bar {
-            background: #e0e0e0;
-            border-radius: 5px;
-            height: 8px;
-            margin: 10px 0;
-            overflow: hidden;
-        }
-        
-        .progress-fill {
-            background: linear-gradient(45deg, #4facfe 0%, #00f2fe 100%);
-            height: 100%;
-            border-radius: 5px;
-            transition: width 0.3s ease;
-        }
-        
-        .results-section {
-            margin-top: 30px;
-            display: none;
-        }
-        
-        .score-display {
-            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
-            border-radius: 10px;
-            padding: 30px;
-            text-align: center;
-            margin: 20px 0;
-        }
-        
-        .final-score {
-            font-size: 3em;
-            font-weight: bold;
-            color: #333;
-            margin-bottom: 10px;
-        }
-        
-        .agent-results {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-            gap: 20px;
-            margin: 20px 0;
-        }
-        
-        .agent-result-card {
-            background: white;
-            border-radius: 10px;
-            padding: 20px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-        }
-        
-        .consensus-section {
-            background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
-            border-radius: 10px;
-            padding: 20px;
-            margin: 20px 0;
-        }
-        
-        .feedback {
-            background: white;
-            border-radius: 10px;
-            padding: 20px;
-            margin: 20px 0;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-        }
-        
-        .error {
-            background: #ffe6e6;
-            color: #d32f2f;
-            padding: 15px;
-            border-radius: 5px;
-            margin: 10px 0;
-            display: none;
-        }
-        
-        .success {
-            background: #e8f5e8;
-            color: #2e7d32;
-            padding: 15px;
-            border-radius: 5px;
-            margin: 10px 0;
-        }
-        
-        .api-status {
-            background: #e3f2fd;
-            border: 1px solid #2196f3;
-            border-radius: 5px;
-            padding: 10px;
-            margin: 10px 0;
-            font-size: 14px;
-        }
-        
-        .hidden {
-            display: none;
-        }
-    </style>
+    <title>Advanced Essay Grading System</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body>
-    <div class="container">
-        <div class="header" style="position: relative;">
-            <div class="status-indicator status-live" id="apiStatus">🔴 API Not Connected</div>
-            <h1>🤖 Multi-Agent Engineering Report Grading System</h1>
-            <p>Real OpenAI GPT-4 powered collaborative assessment with customizable evaluation metrics</p>
-        </div>
-        
-        <div class="main-content">
-            <!-- API Status -->
-            <div class="api-status" id="apiStatusDetails">
-                🔧 <strong>Setup Required:</strong> Configure your OpenAI API key in Netlify environment variables to enable real AI grading.
-                Currently running in simulation mode.
-            </div>
-            
-            <!-- File Upload Area -->
-            <div class="upload-section" id="uploadArea">
-                <div class="upload-icon">📄</div>
-                <div class="upload-text">Click or drag to upload engineering report</div>
-                <p style="color: #999; font-size: 14px;">Supports PDF, DOC, DOCX, TXT formats</p>
-                <input type="file" id="fileInput" accept=".pdf,.doc,.docx,.txt" />
-                <button class="btn" onclick="document.getElementById('fileInput').click()">
-                    Choose File
-                </button>
-            </div>
-            
-            <!-- File Information Display -->
-            <div class="file-info" id="fileInfo">
-                <h3>📋 Uploaded File</h3>
-                <p id="fileName"></p>
-                <p id="fileSize"></p>
-            </div>
-            
-            <!-- Configuration Section -->
-            <div class="config-section" id="configSection">
-                <div class="config-tabs">
-                    <div class="tab active" onclick="switchTab('agents')">🤖 AI Agents</div>
-                    <div class="tab" onclick="switchTab('metrics')">📊 Custom Metrics</div>
-                    <div class="tab" onclick="switchTab('supervision')">👨‍🏫 Teacher Supervision</div>
-                </div>
-                
-                <!-- Agents Configuration -->
-                <div class="tab-content active" id="agents-tab">
-                    <div class="agent-config">
-                        <h2>🤖 Multi-Agent Configuration</h2>
-                        <p>Configure different AI agents to evaluate reports from various perspectives</p>
-                        
-                        <div class="agent-grid">
-                            <div class="agent-card">
-                                <div class="agent-header">
-                                    <div class="agent-icon">📝</div>
-                                    <div>
-                                        <h3>Content Expert Agent</h3>
-                                        <p>Technical accuracy & depth</p>
-                                    </div>
-                                </div>
-                                <label><input type="checkbox" checked id="agent1"> Enable Agent</label>
-                                <textarea class="textarea-input" id="agent1-prompt" placeholder="Custom instructions for content evaluation...">You are a technical content expert. Evaluate the engineering report for technical accuracy, depth of analysis, use of appropriate methodologies, and completeness of technical discussion. Pay special attention to engineering calculations, design principles, and theoretical foundations.</textarea>
-                            </div>
-                            
-                            <div class="agent-card">
-                                <div class="agent-header">
-                                    <div class="agent-icon">🔤</div>
-                                    <div>
-                                        <h3>Language Expert Agent</h3>
-                                        <p>Grammar & writing quality</p>
-                                    </div>
-                                </div>
-                                <label><input type="checkbox" checked id="agent2"> Enable Agent</label>
-                                <textarea class="textarea-input" id="agent2-prompt" placeholder="Custom instructions for language evaluation...">You are an English language expert specializing in technical writing. Evaluate the report for grammar, vocabulary usage, sentence structure, clarity of expression, and overall writing quality. Focus on professional communication standards expected in engineering documentation.</textarea>
-                            </div>
-                            
-                            <div class="agent-card">
-                                <div class="agent-header">
-                                    <div class="agent-icon">📐</div>
-                                    <div>
-                                        <h3>Structure Expert Agent</h3>
-                                        <p>Organization & formatting</p>
-                                    </div>
-                                </div>
-                                <label><input type="checkbox" checked id="agent3"> Enable Agent</label>
-                                <textarea class="textarea-input" id="agent3-prompt" placeholder="Custom instructions for structure evaluation...">You are a document structure expert. Evaluate the report for logical organization, paragraph structure, use of headings, citation format, and overall document formatting. Assess the flow of ideas and coherence of the document structure.</textarea>
-                            </div>
-                            
-                            <div class="agent-card">
-                                <div class="agent-header">
-                                    <div class="agent-icon">💡</div>
-                                    <div>
-                                        <h3>Innovation Expert Agent</h3>
-                                        <p>Creativity & critical thinking</p>
-                                    </div>
-                                </div>
-                                <label><input type="checkbox" checked id="agent4"> Enable Agent</label>
-                                <textarea class="textarea-input" id="agent4-prompt" placeholder="Custom instructions for innovation evaluation...">You are an innovation and critical thinking expert. Evaluate the report for originality of ideas, creative problem-solving approaches, critical analysis, and innovative insights. Look for evidence of independent thinking and novel applications of engineering principles.</textarea>
-                            </div>
-                            
-                            <div class="agent-card">
-                                <div class="agent-header">
-                                    <div class="agent-icon">⚖️</div>
-                                    <div>
-                                        <h3>Consensus Moderator Agent</h3>
-                                        <p>Synthesizes all evaluations</p>
-                                    </div>
-                                </div>
-                                <label><input type="checkbox" checked id="agent5"> Enable Agent</label>
-                                <textarea class="textarea-input" id="agent5-prompt" placeholder="Custom instructions for consensus building...">You are a consensus moderator. Analyze the evaluations from all expert agents, identify agreements and disagreements, and provide a balanced final assessment with justifications. Flag areas that may need human review and provide meta-commentary on the evaluation process.</textarea>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Custom Metrics -->
-                <div class="tab-content" id="metrics-tab">
-                    <div class="custom-metrics">
-                        <h2>📊 Customizable Evaluation Metrics</h2>
-                        <p>Define specific evaluation criteria based on your course requirements</p>
-                        
-                        <div id="metricsContainer">
-                            <div class="metric-item">
-                                <h3>Technical Content</h3>
-                                <label>Weight (%): <input type="number" class="score-input" value="35" min="0" max="100" id="metric1-weight"></label>
-                                <label>Metric Name: <input type="text" class="score-input" value="technical_content" id="metric1-name"></label>
-                                <label>Description:</label>
-                                <textarea class="textarea-input" id="metric1-desc" placeholder="Describe what this metric evaluates...">Engineering principles application, calculation accuracy, problem-solving methodology, technical depth, and use of appropriate engineering standards.</textarea>
-                                <label>Scoring Rubric:</label>
-                                <textarea class="textarea-input" id="metric1-rubric" placeholder="Define scoring criteria...">90-100: Exceptional technical accuracy with innovative approaches and comprehensive analysis
-80-89: Good technical content with minor calculation errors or methodological gaps
-70-79: Adequate technical approach with some significant issues in analysis
-60-69: Basic technical content with major gaps in understanding
-Below 60: Inadequate technical analysis with fundamental errors</textarea>
-                            </div>
-                            
-                            <div class="metric-item">
-                                <h3>Professional Communication</h3>
-                                <label>Weight (%): <input type="number" class="score-input" value="25" min="0" max="100" id="metric2-weight"></label>
-                                <label>Metric Name: <input type="text" class="score-input" value="communication" id="metric2-name"></label>
-                                <label>Description:</label>
-                                <textarea class="textarea-input" id="metric2-desc" placeholder="Describe what this metric evaluates...">Technical writing clarity, professional language, grammar, formatting according to engineering standards, and effective communication of complex concepts.</textarea>
-                                <label>Scoring Rubric:</label>
-                                <textarea class="textarea-input" id="metric2-rubric" placeholder="Define scoring criteria...">90-100: Professional engineering communication standards with excellent clarity
-80-89: Clear communication with minor language issues
-70-79: Generally clear with some communication barriers
-60-69: Basic communication with frequent errors affecting comprehension
-Below 60: Poor communication significantly impacting understanding</textarea>
-                            </div>
-                            
-                            <div class="metric-item">
-                                <h3>Structure & Organization</h3>
-                                <label>Weight (%): <input type="number" class="score-input" value="25" min="0" max="100" id="metric3-weight"></label>
-                                <label>Metric Name: <input type="text" class="score-input" value="structure" id="metric3-name"></label>
-                                <label>Description:</label>
-                                <textarea class="textarea-input" id="metric3-desc" placeholder="Describe what this metric evaluates...">Document organization, logical flow, proper use of headings, citation format, figure/table presentation, and overall document structure.</textarea>
-                                <label>Scoring Rubric:</label>
-                                <textarea class="textarea-input" id="metric3-rubric" placeholder="Define scoring criteria...">90-100: Excellent organization with logical flow and professional formatting
-80-89: Good structure with minor organizational issues
-70-79: Adequate organization with some structural problems
-60-69: Basic structure with significant organizational gaps
-Below 60: Poor organization impacting document coherence</textarea>
-                            </div>
-                            
-                            <div class="metric-item">
-                                <h3>Innovation & Critical Thinking</h3>
-                                <label>Weight (%): <input type="number" class="score-input" value="15" min="0" max="100" id="metric4-weight"></label>
-                                <label>Metric Name: <input type="text" class="score-input" value="innovation" id="metric4-name"></label>
-                                <label>Description:</label>
-                                <textarea class="textarea-input" id="metric4-desc" placeholder="Describe what this metric evaluates...">Creative problem-solving, critical evaluation of alternatives, innovative insights, independent thinking, and consideration of future implications.</textarea>
-                                <label>Scoring Rubric:</label>
-                                <textarea class="textarea-input" id="metric4-rubric" placeholder="Define scoring criteria...">90-100: Highly innovative with excellent critical analysis and original thinking
-80-89: Good innovation with solid critical thinking
-70-79: Some innovative elements with basic critical analysis
-60-69: Limited innovation with minimal critical evaluation
-Below 60: Lack of innovative thinking or critical analysis</textarea>
-                            </div>
-                        </div>
-                        
-                        <button class="btn btn-secondary" onclick="addCustomMetric()">Add Custom Metric</button>
-                        <button class="btn" onclick="loadPresetMetrics()">Reset to Engineering Preset</button>
-                    </div>
-                </div>
-                
-                <!-- Teacher Supervision -->
-                <div class="tab-content" id="supervision-tab">
-                    <div class="custom-metrics">
-                        <h2>👨‍🏫 Teacher Supervision & Quality Control</h2>
-                        <p>Monitor AI grading and provide guidance for quality assurance</p>
-                        
-                        <div class="metric-item">
-                            <h3>Course-Specific Guidelines</h3>
-                            <label>Overall Grading Philosophy:</label>
-                            <textarea class="textarea-input" id="teacher-philosophy" placeholder="Describe your overall approach to grading...">Focus on practical engineering applications, encourage innovative thinking, prioritize clear communication of technical concepts. Emphasize the connection between theory and real-world practice.</textarea>
-                            
-                            <label>Specific Assignment Requirements:</label>
-                            <textarea class="textarea-input" id="teacher-requirements" placeholder="List specific requirements for this assignment...">- Must include engineering calculations with proper units
-- Proper citation of technical sources required (IEEE format preferred)
-- Diagrams and figures should be clearly labeled and referenced
-- Conclusion should relate findings to real-world applications
-- Safety considerations must be addressed where applicable</textarea>
-                            
-                            <label>Common Issues to Monitor:</label>
-                            <textarea class="textarea-input" id="teacher-issues" placeholder="Common problems you want AI to identify...">- Lack of proper unit conversions or dimensional analysis
-- Insufficient consideration of safety factors
-- Weak connection between theoretical principles and practical applications
-- Poor presentation of numerical results without proper significant figures
-- Missing or inadequate discussion of limitations and assumptions</textarea>
-                        </div>
-                        
-                        <div class="metric-item">
-                            <h3>Quality Control Settings</h3>
-                            <label>AI Confidence Threshold: <input type="range" min="50" max="95" value="80" id="confidence-threshold"> <span id="confidence-value">80%</span></label>
-                            <p style="font-size: 14px; color: #666;">AI must be this confident before assigning final scores</p>
-                            
-                            <label><input type="checkbox" id="require-consensus" checked> Require agent consensus for final scoring</label>
-                            <label><input type="checkbox" id="flag-discrepancies" checked> Flag large score discrepancies for review</label>
-                            <label><input type="checkbox" id="detailed-reasoning" checked> Require detailed reasoning for all scores</label>
-                            <label><input type="checkbox" id="human-review" checked> Request human review for low confidence scores</label>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Grading Section -->
-            <div class="grading-section" id="gradingSection" style="display: none;">
-                <button class="btn btn-success" onclick="startMultiAgentGrading()">
-                    🚀 Start Real AI Multi-Agent Grading
-                </button>
-                <div class="error" id="errorMsg"></div>
-            </div>
-            
-            <!-- Loading and Progress -->
-            <div class="loading" id="loadingSection">
-                <div class="spinner"></div>
-                <p id="loadingText">Initializing AI agents...</p>
-                
-                <div id="agentProgress" style="margin-top: 20px;">
-                    <!-- Agent progress will be shown here -->
-                </div>
-            </div>
-            
-            <!-- Results Section -->
-            <div class="results-section" id="resultsSection">
-                <h2>📋 Multi-Agent Grading Results</h2>
-                
-                <div class="score-display">
-                    <div class="final-score" id="finalScore">85</div>
-                    <p>Consensus Score / 100</p>
-                    <p id="consensusInfo" style="font-size: 14px; color: #666;"></p>
-                </div>
-                
-                <div class="consensus-section">
-                    <h3>🤝 Agent Consensus Analysis</h3>
-                    <div id="consensusAnalysis">
-                        <!-- Consensus analysis will be displayed here -->
-                    </div>
-                </div>
-                
-                <div class="agent-results" id="agentResults">
-                    <!-- Individual agent results will be displayed here -->
-                </div>
-                
-                <div class="feedback">
-                    <h3>💬 Comprehensive AI Feedback & Recommendations</h3>
-                    <div id="comprehensiveFeedback">
-                        <!-- Comprehensive feedback will be displayed here -->
-                    </div>
-                </div>
-                
-                <div style="text-align: center; margin-top: 30px;">
-                    <button class="btn" onclick="exportDetailedResults()">Export Detailed Report</button>
-                    <button class="btn btn-secondary" onclick="adjustScores()">Manual Adjustment</button>
-                    <button class="btn" onclick="resetSystem()" style="background: #6c757d;">Start Over</button>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <script>
-        let uploadedFile = null;
-        let gradingResults = {};
-        let customMetricCount = 4;
-        let isApiConnected = false;
-        
-        // Check API connection on load
-        window.addEventListener('load', checkApiConnection);
-        
-        // File upload handling
-        document.getElementById('fileInput').addEventListener('change', handleFileSelect);
-        
-        // Drag and drop
-        const uploadArea = document.getElementById('uploadArea');
-        uploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadArea.classList.add('dragover');
-        });
-        
-        uploadArea.addEventListener('dragleave', () => {
-            uploadArea.classList.remove('dragover');
-        });
-        
-        uploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadArea.classList.remove('dragover');
-            const files = e.dataTransfer.files;
-            if (files.length > 0) {
-                handleFile(files[0]);
-            }
-        });
-        
-        // Confidence threshold display
-        document.getElementById('confidence-threshold').addEventListener('input', (e) => {
-            document.getElementById('confidence-value').textContent = e.target.value + '%';
-        });
-        
-        async function checkApiConnection() {
-            try {
-                // Test if Netlify functions are available
-                const response = await fetch('/.netlify/functions/ai-agent-grade', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ test: true })
-                });
-                
-                if (response.ok || response.status === 500) {
-                    // Function exists, check if API key is configured
-                    isApiConnected = true;
-                    updateApiStatus(true);
-                } else {
-                    updateApiStatus(false);
-                }
-            } catch (error) {
-                updateApiStatus(false);
-            }
-        }
-        
-        function updateApiStatus(connected) {
-            const statusIndicator = document.getElementById('apiStatus');
-            const statusDetails = document.getElementById('apiStatusDetails');
-            
-            if (connected) {
-                statusIndicator.textContent = '🟢 API Connected';
-                statusIndicator.className = 'status-indicator status-live';
-                statusDetails.innerHTML = '✅ <strong>Live AI Integration:</strong> Your system is connected to OpenAI GPT-4 for real multi-agent grading.';
-                statusDetails.style.background = '#e8f5e8';
-                statusDetails.style.borderColor = '#4caf50';
-                isApiConnected = true;
-            } else {
-                statusIndicator.textContent = '🔴 Simulation Mode';
-                statusIndicator.className = 'status-indicator status-demo';
-                statusDetails.innerHTML = '🔧 <strong>Setup Required:</strong> Configure your OpenAI API key in Netlify environment variables to enable real AI grading. Currently running in simulation mode.';
-            }
-        }
-        
-        function handleFileSelect(e) {
-            const file = e.target.files[0];
-            if (file) {
-                handleFile(file);
-            }
-        }
-        
-        function handleFile(file) {
-            const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain'];
-            
-            if (!allowedTypes.includes(file.type)) {
-                showError('Please upload PDF, DOC, DOCX or TXT format files');
-                return;
-            }
-            
-            if (file.size > 10 * 1024 * 1024) {
-                showError('File size cannot exceed 10MB');
-                return;
-            }
-            
-            uploadedFile = file;
-            displayFileInfo(file);
-            document.getElementById('configSection').style.display = 'block';
-            document.getElementById('gradingSection').style.display = 'block';
-        }
-        
-        function displayFileInfo(file) {
-            document.getElementById('fileName').textContent = 'File Name: ' + file.name;
-            document.getElementById('fileSize').textContent = 'File Size: ' + (file.size / 1024 / 1024).toFixed(2) + ' MB';
-            document.getElementById('fileInfo').style.display = 'block';
-        }
-        
-        function switchTab(tabName) {
-            // Remove active class from all tabs and contents
-            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-            
-            // Add active class to selected tab and content
-            event.target.classList.add('active');
-            document.getElementById(tabName + '-tab').classList.add('active');
-        }
-        
-        function addCustomMetric() {
-            customMetricCount++;
-            const container = document.getElementById('metricsContainer');
-            const metricHtml = `
-                <div class="metric-item">
-                    <h3>Custom Metric ${customMetricCount}</h3>
-                    <label>Weight (%): <input type="number" class="score-input" value="0" min="0" max="100" id="metric${customMetricCount}-weight"></label>
-                    <label>Metric Name: <input type="text" class="score-input" value="custom_metric_${customMetricCount}" id="metric${customMetricCount}-name"></label>
-                    <label>Description:</label>
-                    <textarea class="textarea-input" id="metric${customMetricCount}-desc" placeholder="Describe what this metric evaluates..."></textarea>
-                    <label>Scoring Rubric:</label>
-                    <textarea class="textarea-input" id="metric${customMetricCount}-rubric" placeholder="Define scoring criteria..."></textarea>
-                    <button class="btn" onclick="removeMetric(this)" style="background: #dc3545;">Remove</button>
-                </div>
-            `;
-            container.insertAdjacentHTML('beforeend', metricHtml);
-        }
-        
-        function removeMetric(button) {
-            button.parentElement.remove();
-        }
-        
-        function loadPresetMetrics() {
-            if (confirm('This will reset all metrics to engineering defaults. Continue?')) {
-                document.getElementById('metricsContainer').innerHTML = `
-                    <div class="metric-item">
-                        <h3>Technical Content</h3>
-                        <label>Weight (%): <input type="number" class="score-input" value="35" min="0" max="100" id="metric1-weight"></label>
-                        <label>Metric Name: <input type="text" class="score-input" value="technical_content" id="metric1-name"></label>
-                        <label>Description:</label>
-                        <textarea class="textarea-input" id="metric1-desc">Engineering principles application, calculation accuracy, problem-solving methodology, technical depth.</textarea>
-                        <label>Scoring Rubric:</label>
-                        <textarea class="textarea-input" id="metric1-rubric">90-100: Exceptional technical accuracy with innovative approaches
-80-89: Good technical content with minor calculation errors
-70-79: Adequate technical approach with some methodological issues
-60-69: Basic technical content with significant gaps
-Below 60: Inadequate technical analysis</textarea>
-                    </div>
-                    
-                    <div class="metric-item">
-                        <h3>Professional Communication</h3>
-                        <label>Weight (%): <input type="number" class="score-input" value="25" min="0" max="100" id="metric2-weight"></label>
-                        <label>Metric Name: <input type="text" class="score-input" value="communication" id="metric2-name"></label>
-                        <label>Description:</label>
-                        <textarea class="textarea-input" id="metric2-desc">Technical writing clarity, professional language, grammar, formatting according to engineering standards.</textarea>
-                        <label>Scoring Rubric:</label>
-                        <textarea class="textarea-input" id="metric2-rubric">90-100: Professional engineering communication standards
-80-89: Clear communication with minor language issues
-70-79: Generally clear with some communication barriers
-60-69: Basic communication with frequent errors
-Below 60: Poor communication impacting understanding</textarea>
-                    </div>
-                    
-                    <div class="metric-item">
-                        <h3>Structure & Organization</h3>
-                        <label>Weight (%): <input type="number" class="score-input" value="25" min="0" max="100" id="metric3-weight"></label>
-                        <label>Metric Name: <input type="text" class="score-input" value="structure" id="metric3-name"></label>
-                        <label>Description:</label>
-                        <textarea class="textarea-input" id="metric3-desc">Document organization, logical flow, proper use of headings, citation format, figure/table presentation.</textarea>
-                        <label>Scoring Rubric:</label>
-                        <textarea class="textarea-input" id="metric3-rubric">90-100: Excellent organization with logical flow
-80-89: Good structure with minor organizational issues
-70-79: Adequate organization with some structural problems
-60-69: Basic structure with significant gaps
-Below 60: Poor organization impacting coherence</textarea>
-                    </div>
-                    
-                    <div class="metric-item">
-                        <h3>Innovation & Critical Thinking</h3>
-                        <label>Weight (%): <input type="number" class="score-input" value="15" min="0" max="100" id="metric4-weight"></label>
-                        <label>Metric Name: <input type="text" class="score-input" value="innovation" id="metric4-name"></label>
-                        <label>Description:</label>
-                        <textarea class="textarea-input" id="metric4-desc">Creative problem-solving, critical evaluation of alternatives, innovative insights, future considerations.</textarea>
-                        <label>Scoring Rubric:</label>
-                        <textarea class="textarea-input" id="metric4-rubric">90-100: Highly innovative with excellent critical analysis
-80-89: Good innovation with solid critical thinking
-70-79: Some innovative elements with basic analysis
-60-69: Limited innovation with minimal critical evaluation
-Below 60: Lack of innovative thinking</textarea>
-                    </div>
-                `;
-                customMetricCount = 4;
-            }
-        }
-        
-        async function startMultiAgentGrading() {
-            if (!uploadedFile) {
-                showError('Please upload a file first');
-                return;
-            }
-            
-            if (!validateConfiguration()) {
-                return;
-            }
-            
-            document.getElementById('loadingSection').style.display = 'block';
-            document.getElementById('gradingSection').style.display = 'none';
-            hideError();
-            
-            try {
-                const fileContent = await readFileContent(uploadedFile);
-                
-                if (isApiConnected) {
-                    await performRealMultiAgentGrading(fileContent);
-                } else {
-                    await simulateMultiAgentGrading(fileContent);
-                }
-                
-            } catch (error) {
-                console.error('Multi-agent grading failed:', error);
-                showError('Multi-agent grading failed: ' + error.message);
-            } finally {
-                document.getElementById('loadingSection').style.display = 'none';
-            }
-        }
-        
-        async function performRealMultiAgentGrading(content) {
-            const agents = [
-                { id: 1, name: 'Content Expert', icon: '📝', color: '#4facfe' },
-                { id: 2, name: 'Language Expert', icon: '🔤', color: '#ff6b6b' },
-                { id: 3, name: 'Structure Expert', icon: '📐', color: '#4caf50' },
-                { id: 4, name: 'Innovation Expert', icon: '💡', color: '#ffa726' },
-                { id: 5, name: 'Consensus Moderator', icon: '⚖️', color: '#9c27b0' }
-            ];
-            
-            const enabledAgents = agents.filter(agent => 
-                document.getElementById(`agent${agent.id}`).checked
-            );
-            
-            const metrics = getMetricsConfiguration();
-            const teacherGuidelines = getTeacherGuidelines();
-            
-            // Initialize progress tracking
-            initializeAgentProgress(enabledAgents);
-            
-            const agentResults = {};
-            
-            // Process each agent (except consensus moderator)
-            for (const agent of enabledAgents.filter(a => a.id !== 5)) {
-                await performRealAgentEvaluation(agent, content, metrics, teacherGuidelines, agentResults);
-            }
-            
-            // Generate consensus if moderator is enabled
-            if (enabledAgents.find(a => a.id === 5)) {
-                await generateRealConsensus(agentResults, metrics, teacherGuidelines);
-            }
-            
-            // Display results
-            displayMultiAgentResults(agentResults);
-        }
-        
-        async function performRealAgentEvaluation(agent, content, metrics, teacherGuidelines, results) {
-            const statusElement = document.getElementById(`status-${agent.id}`);
-            const barElement = document.getElementById(`bar-${agent.id}`);
-            
-            statusElement.textContent = 'Connecting to AI...';
-            statusElement.style.color = '#ffa726';
-            barElement.style.width = '20%';
-            
-            try {
-                const agentPrompt = document.getElementById(`agent${agent.id}-prompt`).value;
-                
-                const response = await fetch('/.netlify/functions/ai-agent-grade', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        agentId: agent.id,
-                        agentPrompt: agentPrompt,
-                        content: content,
-                        metrics: metrics,
-                        teacherGuidelines: teacherGuidelines
-                    })
-                });
-                
-                barElement.style.width = '70%';
-                statusElement.textContent = 'Processing...';
-                
-                if (!response.ok) {
-                    throw new Error(`API request failed: ${response.status}`);
-                }
-                
-                const data = await response.json();
-                
-                if (!data.success) {
-                    throw new Error(data.error || 'AI evaluation failed');
-                }
-                
-                results[agent.id] = {
-                    name: agent.name,
-                    icon: agent.icon,
-                    color: agent.color,
-                    scores: data.result.scores,
-                    feedback: data.result.feedback,
-                    confidence: data.result.confidence,
-                    reasoning: data.result.reasoning
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        const { Upload, FileText, Users, Target, BarChart, Award, AlertCircle, CheckCircle, Settings, BookOpen, RefreshCw } = lucide;
+
+        const EssayGradingSystem = () => {
+            const [phase, setPhase] = useState('setup');
+            const [essayFile, setEssayFile] = useState(null);
+            const [rubricFile, setRubricFile] = useState(null);
+            const [metrics, setMetrics] = useState([
+                { name: 'Content Quality', weight: 30, description: 'Thesis clarity, argument development, evidence', isDefault: true },
+                { name: 'Organization', weight: 25, description: 'Structure, transitions, coherence', isDefault: true },
+                { name: 'Language Use', weight: 25, description: 'Grammar, vocabulary, style', isDefault: true },
+                { name: 'Critical Thinking', weight: 20, description: 'Analysis, synthesis, evaluation', isDefault: true }
+            ]);
+            const [totalScore, setTotalScore] = useState(100);
+            const [agents, setAgents] = useState([
+                { name: 'Content Expert', emoji: '📚', expertise: 'Evaluates thesis strength, argument logic, and evidence quality' },
+                { name: 'Structure Analyst', emoji: '🏗️', expertise: 'Assesses essay organization, paragraph flow, and transitions' },
+                { name: 'Language Specialist', emoji: '✍️', expertise: 'Reviews grammar, vocabulary usage, and writing style' }
+            ]);
+            const [supervisorSettings, setSupervisorSettings] = useState({
+                strictness: 'balanced',
+                focusAreas: ['consistency', 'fairness', 'standards']
+            });
+            const [gradingResults, setGradingResults] = useState([]);
+            const [loading, setLoading] = useState(false);
+            const [progress, setProgress] = useState(0);
+
+            // Icons setup
+            useEffect(() => {
+                lucide.createIcons();
+            }, [phase]);
+
+            // Save and load configuration
+            const saveConfiguration = () => {
+                const config = {
+                    metrics,
+                    totalScore,
+                    agents,
+                    supervisorSettings
                 };
-                
-                barElement.style.width = '100%';
-                statusElement.textContent = 'Complete ✓';
-                statusElement.style.color = '#4caf50';
-                
-            } catch (error) {
-                console.error(`Agent ${agent.id} evaluation failed:`, error);
-                
-                // Fallback to simulation for this agent
-                await simulateAgentEvaluation(agent, content, results);
-                statusElement.textContent = 'Simulated ⚠️';
-                statusElement.style.color = '#ff9800';
-            }
-            
-            await new Promise(resolve => setTimeout(resolve, 500));
-        }
-        
-        async function generateRealConsensus(agentResults, metrics, teacherGuidelines) {
-            document.getElementById('loadingText').textContent = 'AI Consensus Moderator analyzing...';
-            
-            try {
-                const response = await fetch('/.netlify/functions/consensus-moderator', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        agentResults: agentResults,
-                        metrics: metrics,
-                        teacherGuidelines: teacherGuidelines
-                    })
-                });
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    
-                    if (data.success) {
-                        agentResults.consensus = data.consensus;
-                        return;
-                    }
-                }
-                
-                throw new Error('Consensus API failed');
-                
-            } catch (error) {
-                console.error('Real consensus generation failed, using fallback:', error);
-                
-                // Fallback consensus generation
-                agentResults.consensus = generateFallbackConsensus(agentResults, metrics);
-            }
-        }
-        
-        function getMetricsConfiguration() {
-            const metrics = [];
-            
-            for (let i = 1; i <= customMetricCount; i++) {
-                const weightElement = document.getElementById(`metric${i}-weight`);
-                const nameElement = document.getElementById(`metric${i}-name`);
-                const descElement = document.getElementById(`metric${i}-desc`);
-                const rubricElement = document.getElementById(`metric${i}-rubric`);
-                
-                if (weightElement && nameElement && descElement && rubricElement) {
-                    const weight = parseInt(weightElement.value) || 0;
-                    if (weight > 0) {
-                        metrics.push({
-                            name: nameElement.value,
-                            weight: weight,
-                            description: descElement.value,
-                            rubric: rubricElement.value
-                        });
-                    }
-                }
-            }
-            
-            return metrics;
-        }
-        
-        function getTeacherGuidelines() {
-            return {
-                philosophy: document.getElementById('teacher-philosophy').value,
-                requirements: document.getElementById('teacher-requirements').value,
-                commonIssues: document.getElementById('teacher-issues').value,
-                confidenceThreshold: parseInt(document.getElementById('confidence-threshold').value),
-                requireConsensus: document.getElementById('require-consensus').checked,
-                flagDiscrepancies: document.getElementById('flag-discrepancies').checked,
-                detailedReasoning: document.getElementById('detailed-reasoning').checked,
-                humanReview: document.getElementById('human-review').checked
+                localStorage.setItem('essayGradingConfig', JSON.stringify(config));
+                alert('Configuration saved successfully!');
             };
-        }
-        
-        function validateConfiguration() {
-            // Check if at least one agent is enabled
-            const enabledAgents = [];
-            for (let i = 1; i <= 5; i++) {
-                if (document.getElementById(`agent${i}`).checked) {
-                    enabledAgents.push(i);
-                }
-            }
-            
-            if (enabledAgents.length === 0) {
-                showError('Please enable at least one AI agent');
-                return false;
-            }
-            
-            // Check metric weights total 100%
-            const metrics = getMetricsConfiguration();
-            const total = metrics.reduce((sum, metric) => sum + metric.weight, 0);
-            
-            if (total !== 100) {
-                showError(`Metric weights must total 100%, currently ${total}%`);
-                return false;
-            }
-            
-            if (metrics.length === 0) {
-                showError('Please configure at least one evaluation metric');
-                return false;
-            }
-            
-            return true;
-        }
-        
-        async function readFileContent(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = (e) => resolve(e.target.result);
-                reader.onerror = reject;
-                
-                if (file.type === 'text/plain') {
-                    reader.readAsText(file);
-                } else {
-                    // For demonstration - in production would use proper PDF/DOC parsing
-                    resolve(`Engineering Report Analysis: ${file.name}
 
-This is a sample engineering report content for demonstration purposes. In a production system, this would contain the actual extracted text from the uploaded PDF, DOC, or DOCX file.
+            const loadConfiguration = () => {
+                const saved = localStorage.getItem('essayGradingConfig');
+                if (saved) {
+                    const config = JSON.parse(saved);
+                    setMetrics(config.metrics || metrics);
+                    setTotalScore(config.totalScore || 100);
+                    setAgents(config.agents || agents);
+                    setSupervisorSettings(config.supervisorSettings || supervisorSettings);
+                }
+            };
 
-The report would typically include:
-- Introduction and problem statement
-- Technical methodology and approach
-- Engineering calculations and analysis
-- Results and discussion
-- Conclusions and recommendations
-- References and citations
+            // Load configuration on component mount
+            useEffect(() => {
+                loadConfiguration();
+            }, []);
 
-This sample content allows the AI agents to demonstrate their evaluation capabilities across different criteria including technical accuracy, communication quality, document structure, and innovative thinking.`);
-                }
-            });
-        }
-        
-        // ... (rest of the simulation functions remain the same as before)
-        
-        async function simulateMultiAgentGrading(content) {
-            // Use existing simulation code as fallback
-            const agents = [
-                { id: 1, name: 'Content Expert', icon: '📝', color: '#4facfe' },
-                { id: 2, name: 'Language Expert', icon: '🔤', color: '#ff6b6b' },
-                { id: 3, name: 'Structure Expert', icon: '📐', color: '#4caf50' },
-                { id: 4, name: 'Innovation Expert', icon: '💡', color: '#ffa726' },
-                { id: 5, name: 'Consensus Moderator', icon: '⚖️', color: '#9c27b0' }
-            ];
-            
-            const enabledAgents = agents.filter(agent => 
-                document.getElementById(`agent${agent.id}`).checked
-            );
-            
-            initializeAgentProgress(enabledAgents);
-            
-            const agentResults = {};
-            
-            for (const agent of enabledAgents) {
-                await simulateAgentEvaluation(agent, content, agentResults);
-            }
-            
-            if (enabledAgents.find(a => a.id === 5)) {
-                await generateSimulatedConsensus(agentResults);
-            }
-            
-            displayMultiAgentResults(agentResults);
-        }
-        
-        function initializeAgentProgress(agents) {
-            const progressContainer = document.getElementById('agentProgress');
-            progressContainer.innerHTML = agents.map(agent => `
-                <div class="agent-progress" id="progress-${agent.id}">
-                    <div style="display: flex; align-items: center; margin-bottom: 10px;">
-                        <span style="font-size: 1.5em; margin-right: 10px;">${agent.icon}</span>
-                        <span><strong>${agent.name}</strong></span>
-                        <span id="status-${agent.id}" style="margin-left: auto; color: #666;">Waiting...</span>
-                    </div>
-                    <div class="progress-bar">
-                        <div class="progress-fill" id="bar-${agent.id}" style="width: 0%; background: ${agent.color};"></div>
-                    </div>
-                </div>
-            `).join('');
-        }
-        
-        async function simulateAgentEvaluation(agent, content, results) {
-            const statusElement = document.getElementById(`status-${agent.id}`);
-            const barElement = document.getElementById(`bar-${agent.id}`);
-            
-            statusElement.textContent = 'Analyzing...';
-            statusElement.style.color = '#ffa726';
-            
-            for (let progress = 0; progress <= 100; progress += 20) {
-                barElement.style.width = progress + '%';
-                await new Promise(resolve => setTimeout(resolve, 300));
-            }
-            
-            const scores = generateAgentScores(agent.id);
-            const feedback = generateAgentFeedback(agent.id, scores);
-            
-            results[agent.id] = {
-                name: agent.name,
-                icon: agent.icon,
-                color: agent.color,
-                scores: scores,
-                feedback: feedback,
-                confidence: Math.floor(Math.random() * 20) + 80
+            const saveResults = () => {
+                const blob = new Blob([JSON.stringify(gradingResults, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `grading_results_${new Date().toISOString().split('T')[0]}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
             };
-            
-            statusElement.textContent = 'Complete ✓';
-            statusElement.style.color = '#4caf50';
-            
-            await new Promise(resolve => setTimeout(resolve, 500));
-        }
-        
-        function generateAgentScores(agentId) {
-            const metrics = getMetricsConfiguration();
-            const scores = {};
-            
-            // Base scores vary by agent expertise
-            const agentBias = {
-                1: { technical_content: 88, communication: 82, structure: 85, innovation: 79 },
-                2: { technical_content: 85, communication: 92, structure: 88, innovation: 83 },
-                3: { technical_content: 82, communication: 86, structure: 94, innovation: 81 },
-                4: { technical_content: 86, communication: 84, structure: 83, innovation: 91 },
-                5: { technical_content: 85, communication: 86, structure: 87, innovation: 84 }
-            };
-            
-            const bias = agentBias[agentId] || agentBias[1];
-            
-            metrics.forEach(metric => {
-                const metricKey = metric.name.toLowerCase();
-                const baseScore = bias[metricKey] || 80;
-                scores[metricKey] = Math.max(60, Math.min(100, baseScore + Math.floor(Math.random() * 10) - 5));
-            });
-            
-            return scores;
-        }
-        
-        function generateAgentFeedback(agentId, scores) {
-            const metrics = getMetricsConfiguration();
-            const feedback = [];
-            
-            const feedbackTemplates = {
-                1: { // Content Expert
-                    high: "Excellent technical analysis with strong engineering principles application and accurate calculations.",
-                    medium: "Good technical content, but could benefit from deeper analysis and more rigorous methodology.",
-                    low: "Technical content needs significant improvement in depth, accuracy, and engineering rigor."
-                },
-                2: { // Language Expert
-                    high: "Exceptional English proficiency with professional writing standards and clear technical communication.",
-                    medium: "Good language skills with minor grammatical issues that don't impede understanding.",
-                    low: "Language quality needs improvement for professional engineering communication standards."
-                },
-                3: { // Structure Expert
-                    high: "Outstanding document organization with clear logical flow and professional formatting.",
-                    medium: "Well-structured document with minor organizational issues that could be improved.",
-                    low: "Document structure needs significant reorganization for better clarity and flow."
-                },
-                4: { // Innovation Expert
-                    high: "Demonstrates exceptional creative problem-solving and innovative engineering thinking.",
-                    medium: "Shows some innovative elements but could push creative boundaries further.",
-                    low: "Limited innovative thinking; needs more creative approaches and critical analysis."
+
+            const handleMetricDelete = (index) => {
+                if (!metrics[index].isDefault) {
+                    setMetrics(metrics.filter((_, i) => i !== index));
                 }
             };
-            
-            const templates = feedbackTemplates[agentId] || feedbackTemplates[1];
-            
-            metrics.forEach(metric => {
-                const score = scores[metric.name.toLowerCase()];
-                if (score >= 85) {
-                    feedback.push(`✅ ${metric.name}: ${templates.high}`);
-                } else if (score >= 75) {
-                    feedback.push(`⚠️ ${metric.name}: ${templates.medium}`);
-                } else {
-                    feedback.push(`❌ ${metric.name}: ${templates.low}`);
+
+            const handleMetricEdit = (index, field, value) => {
+                if (!metrics[index].isDefault || field !== 'name') {
+                    const updated = [...metrics];
+                    updated[index] = { ...updated[index], [field]: value };
+                    setMetrics(updated);
                 }
-            });
-            
-            return feedback;
-        }
-        
-        async function generateSimulatedConsensus(agentResults) {
-            document.getElementById('loadingText').textContent = 'Generating consensus...';
-            await new Promise(resolve => setTimeout(resolve, 2000));
-            
-            const metrics = getMetricsConfiguration();
-            agentResults.consensus = generateFallbackConsensus(agentResults, metrics);
-        }
-        
-        function generateFallbackConsensus(agentResults, metrics) {
-            const consensusScores = {};
-            const agreements = [];
-            const disagreements = [];
-            
-            metrics.forEach(metric => {
-                const metricKey = metric.name.toLowerCase();
-                const scores = Object.values(agentResults)
-                    .filter(result => result.scores && result.scores[metricKey] !== undefined)
-                    .map(result => result.scores[metricKey]);
-                
-                if (scores.length > 0) {
-                    const average = scores.reduce((sum, score) => sum + score, 0) / scores.length;
-                    const max = Math.max(...scores);
-                    const min = Math.min(...scores);
-                    const range = max - min;
-                    
-                    consensusScores[metricKey] = Math.round(average);
-                    
-                    if (range <= 5) {
-                        agreements.push(`Strong agreement on ${metric.name} (range: ${range} points)`);
-                    } else if (range <= 10) {
-                        agreements.push(`Moderate agreement on ${metric.name} (range: ${range} points)`);
+            };
+
+            const handleAgentDelete = (index) => {
+                if (agents.length > 1) {
+                    setAgents(agents.filter((_, i) => i !== index));
+                }
+            };
+
+            const handleRetryGrading = () => {
+                setPhase('grading');
+                simulateGrading();
+            };
+
+            const handleFileUpload = (e, type) => {
+                const file = e.target.files[0];
+                if (file) {
+                    if (type === 'essay') {
+                        setEssayFile(file);
                     } else {
-                        disagreements.push(`Disagreement on ${metric.name} (range: ${range} points) - requires review`);
+                        setRubricFile(file);
                     }
                 }
-            });
-            
-            return {
-                consensusScores,
-                agreements,
-                disagreements,
-                confidence: disagreements.length === 0 ? 95 : Math.max(70, 90 - disagreements.length * 10),
-                flagsForReview: disagreements.length > 1 ? ['Multiple disagreements detected'] : [],
-                metaFeedback: `Consensus reached with ${agreements.length} agreements and ${disagreements.length} disagreements.`,
-                methodology: isApiConnected ? 'AI-powered consensus analysis' : 'Weighted average with range analysis'
             };
-        }
-        
-        function displayMultiAgentResults(agentResults) {
-            const metrics = getMetricsConfiguration();
-            const consensusScores = agentResults.consensus ? agentResults.consensus.consensusScores : 
-                calculateAverageScores(agentResults, metrics);
-            
-            const finalScore = calculateWeightedScore(consensusScores, metrics);
-            
-            gradingResults = {
-                finalScore: finalScore,
-                agentResults: agentResults,
-                consensusScores: consensusScores,
-                metrics: metrics
-            };
-            
-            document.getElementById('finalScore').textContent = finalScore;
-            
-            if (agentResults.consensus) {
-                const confidence = agentResults.consensus.confidence;
-                document.getElementById('consensusInfo').textContent = 
-                    `Consensus confidence: ${confidence}% | Based on ${Object.keys(agentResults).length - 1} agents`;
+
+            const startGrading = () => {
+                if (!essayFile) {
+                    alert('Please upload an essay file');
+                    return;
+                }
                 
-                const consensusHtml = `
-                    <div style="margin: 15px 0;">
-                        <h4 style="color: #4caf50;">✓ Agent Agreements</h4>
-                        ${agentResults.consensus.agreements.map(item => `<p>• ${item}</p>`).join('')}
+                const totalWeight = metrics.reduce((sum, m) => sum + m.weight, 0);
+                if (totalWeight !== 100) {
+                    alert('Metric weights must sum to 100%');
+                    return;
+                }
+                
+                setPhase('grading');
+                simulateGrading();
+            };
+
+            const simulateGrading = () => {
+                setLoading(true);
+                setProgress(0);
+                
+                const interval = setInterval(() => {
+                    setProgress(prev => {
+                        if (prev >= 100) {
+                            clearInterval(interval);
+                            generateResults();
+                            return 100;
+                        }
+                        return prev + 10;
+                    });
+                }, 300);
+            };
+
+            const generateResults = () => {
+                const results = metrics.map(metric => ({
+                    ...metric,
+                    score: Math.floor(Math.random() * 30) + 70,
+                    agentScores: agents.map(agent => ({
+                        agent: agent.name,
+                        score: Math.floor(Math.random() * 30) + 70,
+                        feedback: `${agent.name} evaluation for ${metric.name}`
+                    })),
+                    consensus: Math.floor(Math.random() * 30) + 70,
+                    feedback: `Detailed feedback for ${metric.name}...`
+                }));
+                
+                setGradingResults(results);
+                setLoading(false);
+                setPhase('supervision');
+            };
+
+            const applySupervisorAdjustments = () => {
+                const adjusted = gradingResults.map(result => ({
+                    ...result,
+                    score: result.score + (Math.random() * 10 - 5),
+                    supervisorNotes: 'Adjusted for consistency and standards'
+                }));
+                setGradingResults(adjusted);
+                setPhase('manual');
+            };
+
+            const startOver = () => {
+                setPhase('setup');
+                setEssayFile(null);
+                setRubricFile(null);
+                setGradingResults([]);
+                setProgress(0);
+            };
+
+            return (
+                <div className="max-w-6xl mx-auto p-6 space-y-6">
+                    {/* Header */}
+                    <div className="text-center mb-8">
+                        <h1 className="text-4xl font-bold text-gray-800 mb-2">🎓 Advanced Essay Grading System</h1>
+                        <p className="text-gray-600">AI-Powered Multi-Agent Evaluation with Human Oversight</p>
                     </div>
-                    ${agentResults.consensus.disagreements.length > 0 ? `
-                    <div style="margin: 15px 0;">
-                        <h4 style="color: #ff6b6b;">⚠ Areas of Disagreement</h4>
-                        ${agentResults.consensus.disagreements.map(item => `<p>• ${item}</p>`).join('')}
-                    </div>` : ''}
-                    ${agentResults.consensus.flagsForReview.length > 0 ? `
-                    <div style="margin: 15px 0;">
-                        <h4 style="color: #ff9800;">🔍 Flags for Review</h4>
-                        ${agentResults.consensus.flagsForReview.map(item => `<p>• ${item}</p>`).join('')}
-                    </div>` : ''}
-                `;
-                document.getElementById('consensusAnalysis').innerHTML = consensusHtml;
-            }
-            
-            const agentResultsHtml = Object.entries(agentResults)
-                .filter(([key]) => key !== 'consensus')
-                .map(([agentId, result]) => `
-                    <div class="agent-result-card">
-                        <div style="display: flex; align-items: center; margin-bottom: 15px;">
-                            <span style="font-size: 2em; margin-right: 15px;">${result.icon}</span>
-                            <div>
-                                <h3 style="color: ${result.color};">${result.name}</h3>
-                                <p style="font-size: 14px; color: #666;">Confidence: ${result.confidence}%</p>
-                            </div>
+
+                    {/* Progress Bar */}
+                    <div className="bg-white rounded-lg shadow-md p-4">
+                        <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium text-gray-700">Progress</span>
+                            <span className="text-sm text-gray-500">{phase}</span>
                         </div>
-                        
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin: 15px 0;">
-                            ${Object.entries(result.scores).map(([metric, score]) => `
-                                <div style="text-align: center; padding: 10px; background: #f8f9fa; border-radius: 5px;">
-                                    <div style="font-size: 1.5em; font-weight: bold; color: ${result.color};">${score}</div>
-                                    <div style="font-size: 12px; text-transform: capitalize;">${metric.replace('_', ' ')}</div>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div 
+                                className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                                style={{ width: `${phase === 'setup' ? 25 : phase === 'grading' ? 50 : phase === 'supervision' ? 75 : 100}%` }}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Setup Phase */}
+                    {phase === 'setup' && (
+                        <div className="space-y-6">
+                            {/* File Upload */}
+                            <div className="bg-white rounded-lg shadow-md p-6">
+                                <h2 className="text-2xl font-bold mb-4 flex items-center">
+                                    <i data-lucide="upload" className="mr-2"></i> Upload Documents
+                                </h2>
+                                <div className="grid md:grid-cols-2 gap-6">
+                                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 transition-colors">
+                                        <i data-lucide="file-text" className="mx-auto h-12 w-12 text-gray-400 mb-3"></i>
+                                        <label className="cursor-pointer">
+                                            <span className="text-lg font-medium text-gray-700">Upload Essay</span>
+                                            <input
+                                                type="file"
+                                                className="hidden"
+                                                accept=".pdf,.doc,.docx,.txt"
+                                                onChange={(e) => handleFileUpload(e, 'essay')}
+                                            />
+                                            {essayFile && (
+                                                <p className="mt-2 text-sm text-green-600 flex items-center justify-center">
+                                                    <i data-lucide="check-circle" className="w-4 h-4 mr-1"></i>
+                                                    {essayFile.name}
+                                                </p>
+                                        </div>
+                                    ))}
                                 </div>
-                            `).join('')}
-                        </div>
-                        
-                        <div style="margin-top: 15px;">
-                            <h4>AI Feedback:</h4>
-                            ${result.feedback.map(item => `<p style="margin: 5px 0; font-size: 14px;">• ${item}</p>`).join('')}
-                        </div>
-                        
-                        ${result.reasoning ? `
-                        <div style="margin-top: 15px;">
-                            <h4>Reasoning:</h4>
-                            <p style="font-size: 14px; color: #666; font-style: italic;">${result.reasoning}</p>
-                        </div>` : ''}
-                    </div>
-                `).join('');
-            
-            document.getElementById('agentResults').innerHTML = agentResultsHtml;
-            
-            generateComprehensiveFeedback(agentResults, consensusScores, metrics);
-            
-            document.getElementById('resultsSection').style.display = 'block';
-            document.getElementById('resultsSection').scrollIntoView({ behavior: 'smooth' });
-        }
-        
-        function calculateAverageScores(agentResults, metrics) {
-            const averageScores = {};
-            
-            metrics.forEach(metric => {
-                const metricKey = metric.name.toLowerCase();
-                const scores = Object.values(agentResults)
-                    .filter(result => result.scores && result.scores[metricKey] !== undefined)
-                    .map(result => result.scores[metricKey]);
-                
-                if (scores.length > 0) {
-                    averageScores[metricKey] = Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length);
-                }
-            });
-            
-            return averageScores;
-        }
-        
-        function calculateWeightedScore(scores, metrics) {
-            let totalScore = 0;
-            let totalWeight = 0;
-            
-            metrics.forEach(metric => {
-                const metricKey = metric.name.toLowerCase();
-                if (scores[metricKey] !== undefined) {
-                    totalScore += scores[metricKey] * metric.weight;
-                    totalWeight += metric.weight;
-                }
-            });
-            
-            return totalWeight > 0 ? Math.round(totalScore / totalWeight) : 0;
-        }
-        
-        function generateComprehensiveFeedback(agentResults, consensusScores, metrics) {
-            const feedback = [];
-            
-            const overallScore = Object.values(consensusScores).reduce((sum, score) => sum + score, 0) / Object.keys(consensusScores).length;
-            
-            if (overallScore >= 90) {
-                feedback.push("🌟 <strong>Exceptional Work:</strong> This report demonstrates outstanding quality across all evaluation criteria with professional-level execution.");
-            } else if (overallScore >= 80) {
-                feedback.push("✅ <strong>Strong Performance:</strong> This report shows high quality work with minor areas for improvement to reach excellence.");
-            } else if (overallScore >= 70) {
-                feedback.push("⚠️ <strong>Good Foundation:</strong> This report has solid fundamentals but would benefit from targeted improvements in key areas.");
-            } else {
-                feedback.push("❌ <strong>Needs Significant Improvement:</strong> This report requires substantial revision across multiple evaluation criteria.");
-            }
-            
-            // Metric-specific feedback
-            metrics.forEach(metric => {
-                const metricKey = metric.name.toLowerCase();
-                const score = consensusScores[metricKey];
-                
-                if (score >= 85) {
-                    feedback.push(`<strong>${metric.name}:</strong> Excellent performance (${score}/100) - maintain this high standard.`);
-                } else if (score >= 75) {
-                    feedback.push(`<strong>${metric.name}:</strong> Good work (${score}/100) with clear room for enhancement.`);
-                } else {
-                    feedback.push(`<strong>${metric.name}:</strong> Priority improvement area (${score}/100) - requires focused attention.`);
-                }
-            });
-            
-            // Teacher guidelines alignment
-            const teacherGuidelines = getTeacherGuidelines();
-            if (teacherGuidelines.philosophy.trim()) {
-                feedback.push(`<strong>Course Alignment:</strong> ${getAlignmentFeedback(consensusScores, teacherGuidelines.philosophy)}`);
-            }
-            
-            // API status indication
-            if (isApiConnected) {
-                feedback.push(`<em>💡 This assessment was generated using real AI agents with OpenAI GPT-4 for authentic multi-perspective evaluation.</em>`);
-            } else {
-                feedback.push(`<em>⚠️ This assessment was generated using simulation mode. Connect your OpenAI API for real AI-powered evaluation.</em>`);
-            }
-            
-            document.getElementById('comprehensiveFeedback').innerHTML = 
-                feedback.map(item => `<p style="margin: 10px 0; line-height: 1.6;">${item}</p>`).join('');
-        }
-        
-        function getAlignmentFeedback(scores, philosophy) {
-            const avgScore = Object.values(scores).reduce((sum, score) => sum + score, 0) / Object.keys(scores).length;
-            
-            if (philosophy.toLowerCase().includes('practical') && scores.technical_content >= 85) {
-                return "Excellent alignment with practical engineering focus - strong technical implementation.";
-            } else if (philosophy.toLowerCase().includes('innovative') && scores.innovation >= 85) {
-                return "Strong demonstration of innovative thinking as emphasized in course objectives.";
-            } else if (philosophy.toLowerCase().includes('communication') && scores.communication >= 85) {
-                return "Good alignment with communication-focused learning objectives.";
-            } else if (avgScore >= 80) {
-                return "Generally aligns well with stated course philosophy and requirements.";
-            } else {
-                return "Consider reviewing alignment with stated course philosophy - some areas may need attention.";
-            }
-        }
-        
-        function exportDetailedResults() {
-            if (!gradingResults.finalScore) {
-                showError('No results to export');
-                return;
-            }
-            
-            const fileName = uploadedFile ? uploadedFile.name : 'Report';
-            const timestamp = new Date().toLocaleString();
-            
-            let reportContent = `Multi-Agent Engineering Report Assessment
-================================================
-
-Report File: ${fileName}
-Assessment Date: ${timestamp}
-Final Weighted Score: ${gradingResults.finalScore}/100
-Assessment Mode: ${isApiConnected ? 'Live AI Analysis (OpenAI GPT-4)' : 'Simulation Mode'}
-
-EVALUATION METRICS
-==================
-${gradingResults.metrics.map(metric => 
-    `${metric.name}: ${gradingResults.consensusScores[metric.name.toLowerCase()] || 'N/A'}/100 (Weight: ${metric.weight}%)`
-).join('\n')}
-
-INDIVIDUAL AGENT EVALUATIONS
-============================
-
-`;
-            
-            Object.entries(gradingResults.agentResults)
-                .filter(([key]) => key !== 'consensus')
-                .forEach(([agentId, result]) => {
-                    reportContent += `${result.name} Agent Analysis
-${'='.repeat(result.name.length + 15)}
-Confidence Level: ${result.confidence}%
-
-Scores:
-${Object.entries(result.scores).map(([metric, score]) => 
-    `  ${metric.replace('_', ' ').toUpperCase()}: ${score}/100`
-).join('\n')}
-
-Feedback:
-${result.feedback.map(item => `  • ${item.replace(/[✅⚠️❌]/g, '').trim()}`).join('\n')}
-
-${result.reasoning ? `Detailed Reasoning:\n  ${result.reasoning}\n` : ''}
-`;
-                });
-            
-            if (gradingResults.agentResults.consensus) {
-                const consensus = gradingResults.agentResults.consensus;
-                reportContent += `
-CONSENSUS ANALYSIS
-==================
-Overall Confidence: ${consensus.confidence}%
-Methodology: ${consensus.methodology}
-
-Areas of Agreement:
-${consensus.agreements.map(item => `  • ${item}`).join('\n')}
-
-${consensus.disagreements.length > 0 ? `
-Areas of Disagreement:
-${consensus.disagreements.map(item => `  • ${item}`).join('\n')}
-` : ''}
-
-${consensus.flagsForReview.length > 0 ? `
-Flags for Human Review:
-${consensus.flagsForReview.map(item => `  • ${item}`).join('\n')}
-` : ''}
-
-Meta-Assessment: ${consensus.metaFeedback}
-`;
-            }
-            
-            reportContent += `
-COMPREHENSIVE FEEDBACK
-======================
-${document.getElementById('comprehensiveFeedback').textContent}
-
-ASSESSMENT CONFIGURATION
-========================
-Teacher Guidelines:
-  Philosophy: ${getTeacherGuidelines().philosophy}
-  Requirements: ${getTeacherGuidelines().requirements}
-  Common Issues: ${getTeacherGuidelines().commonIssues}
-  
-Quality Control Settings:
-  Confidence Threshold: ${getTeacherGuidelines().confidenceThreshold}%
-  Require Consensus: ${getTeacherGuidelines().requireConsensus ? 'Yes' : 'No'}
-  Flag Discrepancies: ${getTeacherGuidelines().flagDiscrepancies ? 'Yes' : 'No'}
-  Detailed Reasoning: ${getTeacherGuidelines().detailedReasoning ? 'Yes' : 'No'}
-
-Evaluation Metrics Used:
-${gradingResults.metrics.map(metric => 
-    `  ${metric.name} (${metric.weight}%): ${metric.description}`
-).join('\n')}
-
-Generated by Multi-Agent Engineering Report Grading System
-${isApiConnected ? 'Powered by OpenAI GPT-4' : 'Simulation Mode'}
-`;
-            
-            const blob = new Blob([reportContent], { type: 'text/plain;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `${fileName.replace(/\.[^/.]+$/, '')}_MultiAgent_Assessment_${new Date().toISOString().split('T')[0]}.txt`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        }
-        
-        function adjustScores() {
-            const adjustmentHtml = `
-                <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin: 20px 0;">
-                    <h3>Manual Score Adjustment</h3>
-                    <p>Adjust individual scores if needed. Changes will be reflected in the final weighted score.</p>
-                    
-                    ${gradingResults.metrics.map(metric => {
-                        const currentScore = gradingResults.consensusScores[metric.name.toLowerCase()] || 0;
-                        return `
-                            <div style="margin: 15px 0;">
-                                <label><strong>${metric.name} (${metric.weight}%):</strong></label>
-                                <input type="range" min="0" max="100" value="${currentScore}" 
-                                       onchange="updateScore('${metric.name.toLowerCase()}', this.value)"
-                                       style="width: 200px; margin: 0 10px;">
-                                <span id="score-${metric.name.toLowerCase()}" style="font-weight: bold;">${currentScore}</span>/100
+                                
+                                <div className="mt-6 flex gap-4 justify-center">
+                                    <button
+                                        onClick={saveResults}
+                                        className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                                    >
+                                        Download Report
+                                    </button>
+                                    <button
+                                        onClick={startOver}
+                                        className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600"
+                                    >
+                                        Grade Another Essay
+                                    </button>
+                                </div>
                             </div>
-                        `;
-                    }).join('')}
-                    
-                    <div style="margin-top: 20px;">
-                        <button class="btn" onclick="saveAdjustments()">Save Adjustments</button>
-                        <button class="btn" onclick="cancelAdjustments()" style="background: #6c757d;">Cancel</button>
-                    </div>
+                        </div>
+                    )}
                 </div>
-            `;
-            
-            const resultsSection = document.getElementById('resultsSection');
-            const existingAdjustment = document.getElementById('scoreAdjustment');
-            
-            if (existingAdjustment) {
-                existingAdjustment.remove();
-            }
-            
-            const adjustmentDiv = document.createElement('div');
-            adjustmentDiv.id = 'scoreAdjustment';
-            adjustmentDiv.innerHTML = adjustmentHtml;
-            resultsSection.insertBefore(adjustmentDiv, resultsSection.lastElementChild);
-        }
-        
-        function updateScore(metricName, newScore) {
-            document.getElementById(`score-${metricName}`).textContent = newScore;
-            gradingResults.consensusScores[metricName] = parseInt(newScore);
-            
-            const finalScore = calculateWeightedScore(gradingResults.consensusScores, gradingResults.metrics);
-            document.getElementById('finalScore').textContent = finalScore;
-            gradingResults.finalScore = finalScore;
-        }
-        
-        function saveAdjustments() {
-            document.getElementById('scoreAdjustment').remove();
-            showError('Score adjustments saved successfully!');
-            document.getElementById('errorMsg').style.background = '#e8f5e8';
-            document.getElementById('errorMsg').style.color = '#2e7d32';
-            setTimeout(hideError, 3000);
-        }
-        
-        function cancelAdjustments() {
-            document.getElementById('scoreAdjustment').remove();
-        }
-        
-        function resetSystem() {
-            if (confirm('This will reset the entire grading session. Are you sure?')) {
-                uploadedFile = null;
-                gradingResults = {};
-                
-                document.getElementById('fileInput').value = '';
-                document.getElementById('fileInfo').style.display = 'none';
-                document.getElementById('configSection').style.display = 'none';
-                document.getElementById('gradingSection').style.display = 'none';
-                document.getElementById('resultsSection').style.display = 'none';
-                document.getElementById('loadingSection').style.display = 'none';
-                
-                hideError();
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-            }
-        }
-        
-        function showError(message) {
-            const errorDiv = document.getElementById('errorMsg');
-            errorDiv.textContent = message;
-            errorDiv.style.display = 'block';
-        }
-        
-        function hideError() {
-            const errorDiv = document.getElementById('errorMsg');
-            errorDiv.style.display = 'none';
-            errorDiv.style.background = '#ffe6e6';
-            errorDiv.style.color = '#d32f2f';
-        }
-        
-        // Real-time weight validation
-        document.addEventListener('input', (e) => {
-            if (e.target.classList.contains('score-input') && e.target.id.includes('weight')) {
-                validateWeights();
-            }
-        });
-        
-        function validateWeights() {
-            const metrics = getMetricsConfiguration();
-            const total = metrics.reduce((sum, metric) => sum + metric.weight, 0);
-            
-            const allWeightInputs = document.querySelectorAll('.score-input[id*="weight"]');
-            allWeightInputs.forEach(input => {
-                if (total === 100) {
-                    input.style.borderColor = '#28a745';
-                } else if (total > 100) {
-                    input.style.borderColor = '#dc3545';
-                } else {
-                    input.style.borderColor = '#ffc107';
-                }
-            });
-        }
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<EssayGradingSystem />);
     </script>
 </body>
 </html>
+                                        </label>
+                                    </div>
+                                    
+                                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 transition-colors">
+                                        <i data-lucide="target" className="mx-auto h-12 w-12 text-gray-400 mb-3"></i>
+                                        <label className="cursor-pointer">
+                                            <span className="text-lg font-medium text-gray-700">Upload Rubric (Optional)</span>
+                                            <input
+                                                type="file"
+                                                className="hidden"
+                                                accept=".pdf,.doc,.docx,.txt"
+                                                onChange={(e) => handleFileUpload(e, 'rubric')}
+                                            />
+                                            {rubricFile && (
+                                                <p className="mt-2 text-sm text-green-600 flex items-center justify-center">
+                                                    <i data-lucide="check-circle" className="w-4 h-4 mr-1"></i>
+                                                    {rubricFile.name}
+                                                </p>
+                                            )}
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Evaluation Metrics */}
+                            <div className="bg-white rounded-lg shadow-md p-6">
+                                <h3 className="text-lg font-semibold mb-3 flex items-center">
+                                    📊 Customizable Evaluation Metrics
+                                    <button
+                                        onClick={saveConfiguration}
+                                        className="ml-auto px-3 py-1 bg-green-500 text-white rounded-lg hover:bg-green-600 text-sm"
+                                    >
+                                        Save Configuration
+                                    </button>
+                                </h3>
+                                <div className="space-y-3">
+                                    <div className="mb-4">
+                                        <label className="block text-sm font-medium mb-2">Total Score:</label>
+                                        <input
+                                            type="number"
+                                            value={totalScore}
+                                            onChange={(e) => setTotalScore(Number(e.target.value))}
+                                            className="w-32 px-3 py-2 border rounded-lg"
+                                            min="1"
+                                        />
+                                    </div>
+                                    {metrics.map((metric, index) => (
+                                        <div key={index} className="bg-gray-50 p-3 rounded-lg">
+                                            <div className="flex items-center gap-3">
+                                                <input
+                                                    type="text"
+                                                    value={metric.name}
+                                                    onChange={(e) => handleMetricEdit(index, 'name', e.target.value)}
+                                                    disabled={metric.isDefault}
+                                                    className="flex-1 px-3 py-2 border rounded-lg disabled:bg-gray-100"
+                                                />
+                                                <input
+                                                    type="number"
+                                                    value={metric.weight}
+                                                    onChange={(e) => handleMetricEdit(index, 'weight', Number(e.target.value))}
+                                                    className="w-20 px-3 py-2 border rounded-lg"
+                                                    min="0"
+                                                    max="100"
+                                                />
+                                                <span className="text-sm text-gray-600">%</span>
+                                                {!metric.isDefault && (
+                                                    <button
+                                                        onClick={() => handleMetricDelete(index)}
+                                                        className="text-red-500 hover:text-red-700"
+                                                    >
+                                                        ✕
+                                                    </button>
+                                                )}
+                                            </div>
+                                            <input
+                                                type="text"
+                                                value={metric.description}
+                                                onChange={(e) => handleMetricEdit(index, 'description', e.target.value)}
+                                                className="w-full mt-2 px-3 py-2 border rounded-lg text-sm"
+                                                placeholder="Description"
+                                            />
+                                        </div>
+                                    ))}
+                                    <button
+                                        onClick={() => setMetrics([...metrics, { name: '', weight: 0, description: '' }])}
+                                        className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-400"
+                                    >
+                                        + Add Metric
+                                    </button>
+                                    <div className="text-sm text-gray-600">
+                                        Total Weight: {metrics.reduce((sum, m) => sum + m.weight, 0)}%
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Multi-Agent Configuration */}
+                            <div className="bg-white rounded-lg shadow-md p-6">
+                                <h3 className="text-lg font-semibold mb-3">🤖 Multi-Agent Configuration</h3>
+                                <div className="space-y-3">
+                                    {agents.map((agent, index) => (
+                                        <div key={index} className="bg-gray-50 p-3 rounded-lg">
+                                            <div className="flex items-center gap-3 mb-2">
+                                                <span className="text-2xl">{agent.emoji}</span>
+                                                <input
+                                                    type="text"
+                                                    value={agent.name}
+                                                    onChange={(e) => {
+                                                        const updated = [...agents];
+                                                        updated[index].name = e.target.value;
+                                                        setAgents(updated);
+                                                    }}
+                                                    className="flex-1 px-3 py-2 border rounded-lg"
+                                                />
+                                                {agents.length > 1 && (
+                                                    <button
+                                                        onClick={() => handleAgentDelete(index)}
+                                                        className="text-red-500 hover:text-red-700"
+                                                    >
+                                                        ✕
+                                                    </button>
+                                                )}
+                                            </div>
+                                            <textarea
+                                                value={agent.expertise}
+                                                onChange={(e) => {
+                                                    const updated = [...agents];
+                                                    updated[index].expertise = e.target.value;
+                                                    setAgents(updated);
+                                                }}
+                                                className="w-full px-3 py-2 border rounded-lg text-sm"
+                                                rows="2"
+                                                placeholder="Agent expertise..."
+                                            />
+                                        </div>
+                                    ))}
+                                    <button
+                                        onClick={() => setAgents([...agents, { name: '', emoji: '🤖', expertise: '' }])}
+                                        className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-400"
+                                    >
+                                        + Add Agent
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Supervisor Settings */}
+                            <div className="bg-white rounded-lg shadow-md p-6">
+                                <h3 className="text-lg font-semibold mb-3">👨‍🏫 Supervisor Configuration</h3>
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium mb-2">Grading Strictness</label>
+                                        <select
+                                            value={supervisorSettings.strictness}
+                                            onChange={(e) => setSupervisorSettings({...supervisorSettings, strictness: e.target.value})}
+                                            className="w-full px-3 py-2 border rounded-lg"
+                                        >
+                                            <option value="lenient">Lenient</option>
+                                            <option value="balanced">Balanced</option>
+                                            <option value="strict">Strict</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-2">Focus Areas</label>
+                                        <div className="space-y-2">
+                                            {['consistency', 'fairness', 'standards', 'improvement'].map(area => (
+                                                <label key={area} className="flex items-center">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={supervisorSettings.focusAreas.includes(area)}
+                                                        onChange={(e) => {
+                                                            const areas = e.target.checked 
+                                                                ? [...supervisorSettings.focusAreas, area]
+                                                                : supervisorSettings.focusAreas.filter(a => a !== area);
+                                                            setSupervisorSettings({...supervisorSettings, focusAreas: areas});
+                                                        }}
+                                                        className="mr-2"
+                                                    />
+                                                    <span className="capitalize">{area}</span>
+                                                </label>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Start Button */}
+                            <div className="text-center">
+                                <button
+                                    onClick={startGrading}
+                                    className="px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-lg font-semibold"
+                                >
+                                    Start AI Grading Process
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Grading Phase */}
+                    {phase === 'grading' && (
+                        <div className="bg-white rounded-lg shadow-md p-8">
+                            <h2 className="text-2xl font-bold mb-6 text-center">🤖 AI Agents at Work</h2>
+                            {loading ? (
+                                <div className="space-y-4">
+                                    <div className="text-center">
+                                        <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
+                                            <i data-lucide="refresh-cw" className="w-8 h-8 text-blue-600 animate-spin"></i>
+                                        </div>
+                                        <p className="text-lg font-medium mb-2">Analyzing Essay...</p>
+                                        <p className="text-sm text-gray-600">Multiple AI agents are evaluating different aspects</p>
+                                    </div>
+                                    <div className="w-full bg-gray-200 rounded-full h-4">
+                                        <div 
+                                            className="bg-blue-600 h-4 rounded-full transition-all duration-300"
+                                            style={{ width: `${progress}%` }}
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-4 mt-6">
+                                        {agents.map((agent, index) => (
+                                            <div key={index} className="text-center">
+                                                <div className="text-3xl mb-2">{agent.emoji}</div>
+                                                <p className="text-sm font-medium">{agent.name}</p>
+                                                <p className="text-xs text-gray-600">Analyzing...</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="text-center">
+                                    <i data-lucide="check-circle" className="w-16 h-16 text-green-500 mx-auto mb-4"></i>
+                                    <p className="text-lg font-medium">Grading Complete!</p>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Supervision Phase */}
+                    {phase === 'supervision' && (
+                        <div className="space-y-6">
+                            <div className="bg-white rounded-lg shadow-md p-6">
+                                <h2 className="text-2xl font-bold mb-4">👨‍🏫 Teacher Supervision & Quality Control</h2>
+                                <div className="space-y-4">
+                                    {gradingResults.map((result, index) => (
+                                        <div key={index} className="border rounded-lg p-4">
+                                            <div className="flex justify-between items-start mb-3">
+                                                <div>
+                                                    <h4 className="font-semibold">{result.name}</h4>
+                                                    <p className="text-sm text-gray-600">{result.description}</p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <div className="text-2xl font-bold text-blue-600">
+                                                        {Math.round(result.consensus)}%
+                                                    </div>
+                                                    <p className="text-xs text-gray-500">Consensus Score</p>
+                                                </div>
+                                            </div>
+                                            <div className="grid grid-cols-3 gap-2 mt-3">
+                                                {result.agentScores.map((agentScore, agentIndex) => (
+                                                    <div key={agentIndex} className="bg-gray-50 p-2 rounded text-center">
+                                                        <p className="text-xs font-medium">{agentScore.agent}</p>
+                                                        <p className="text-lg font-bold">{agentScore.score}%</p>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="mt-6 flex gap-4 justify-center">
+                                    <button
+                                        onClick={applySupervisorAdjustments}
+                                        className="px-6 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+                                    >
+                                        Apply Supervisor Adjustments
+                                    </button>
+                                    <button
+                                        onClick={startOver}
+                                        className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600"
+                                    >
+                                        Start Over
+                                    </button>
+                                    <button
+                                        onClick={handleRetryGrading}
+                                        className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                                    >
+                                        Retry Grading
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Manual Adjustment Phase */}
+                    {phase === 'manual' && (
+                        <div className="space-y-6">
+                            <div className="bg-white rounded-lg shadow-md p-6">
+                                <h2 className="text-2xl font-bold mb-4">✏️ Manual Score Adjustment</h2>
+                                <div className="space-y-4">
+                                    {gradingResults.map((result, index) => (
+                                        <div key={index} className="border rounded-lg p-4">
+                                            <div className="flex justify-between items-center mb-3">
+                                                <div>
+                                                    <h4 className="font-semibold">{result.name}</h4>
+                                                    <p className="text-sm text-gray-600">{result.description}</p>
+                                                </div>
+                                                <div className="flex items-center gap-4">
+                                                    <input
+                                                        type="range"
+                                                        min="0"
+                                                        max="100"
+                                                        value={result.score}
+                                                        onChange={(e) => {
+                                                            const updated = [...gradingResults];
+                                                            updated[index].score = Number(e.target.value);
+                                                            setGradingResults(updated);
+                                                        }}
+                                                        className="w-32"
+                                                    />
+                                                    <div className="text-2xl font-bold text-blue-600 w-16 text-right">
+                                                        {Math.round(result.score)}%
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <textarea
+                                                className="w-full px-3 py-2 border rounded-lg text-sm"
+                                                rows="2"
+                                                placeholder="Add manual feedback..."
+                                                value={result.manualFeedback || ''}
+                                                onChange={(e) => {
+                                                    const updated = [...gradingResults];
+                                                    updated[index].manualFeedback = e.target.value;
+                                                    setGradingResults(updated);
+                                                }}
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="mt-6 flex gap-4 justify-center">
+                                    <button
+                                        onClick={() => setPhase('final')}
+                                        className="px-6 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
+                                    >
+                                        Finalize Grading
+                                    </button>
+                                    <button
+                                        onClick={startOver}
+                                        className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600"
+                                    >
+                                        Start Over
+                                    </button>
+                                    <button
+                                        onClick={handleRetryGrading}
+                                        className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                                    >
+                                        Retry with Current Settings
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Final Results */}
+                    {phase === 'final' && (
+                        <div className="space-y-6">
+                            <div className="bg-white rounded-lg shadow-md p-6">
+                                <h2 className="text-2xl font-bold mb-6 text-center">📊 Final Grading Report</h2>
+                                
+                                <div className="text-center p-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg">
+                                    <h3 className="text-2xl font-bold mb-2">Final Score</h3>
+                                    <div className="text-5xl font-bold text-blue-600 mb-2">
+                                        {Math.round(gradingResults.reduce((sum, r) => sum + (r.score / 100) * r.weight, 0) * (totalScore / 100))} / {totalScore}
+                                    </div>
+                                    <div className="text-lg text-gray-600">
+                                        {Math.round(gradingResults.reduce((sum, r) => sum + (r.score / 100) * r.weight, 0))}%
+                                    </div>
+                                </div>
+                                
+                                <div className="mt-6 space-y-4">
+                                    {gradingResults.map((result, index) => (
+                                        <div key={index} className="bg-gray-50 rounded-lg p-4">
+                                            <div className="flex justify-between items-center mb-2">
+                                                <h4 className="font-semibold text-lg">{result.name}</h4>
+                                                <div className="text-2xl font-bold text-blue-600">
+                                                    {Math.round((result.score / 100) * result.weight * (totalScore / 100))} / {Math.round(result.weight * (totalScore / 100))}
+                                                </div>
+                                            </div>
+                                            <div className="w-full bg-gray-200 rounded-full h-3 mb-2">
+                                                <div 
+                                                    className="bg-blue-600 h-3 rounded-full"
+                                                    style={{ width: `${result.score}%` }}
+                                                />
+                                            </div>
+                                            <p className="text-sm text-gray-700 mb-1">{result.feedback}</p>
+                                            {result.supervisorNotes && (
+                                                <p className="text-sm text-orange-600 italic">
+                                                    Supervisor: {result.supervisorNotes}
+                                                </p>
+                                            )}
+                                            {result.manualFeedback && (
+                                                <p className="text-sm text-purple-600 italic">
+                                                    Manual: {result.manualFeedback}
+                                                </p>
+                                            )}
