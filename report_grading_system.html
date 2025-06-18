@@ -1,0 +1,1286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Agent Engineering Report Grading System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(45deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+        
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        .main-content {
+            padding: 40px;
+        }
+        
+        .upload-section {
+            border: 3px dashed #ddd;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 30px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .upload-section:hover {
+            border-color: #4facfe;
+            background-color: #f8fdff;
+        }
+        
+        .upload-section.dragover {
+            border-color: #4facfe;
+            background-color: #f0f9ff;
+        }
+        
+        .upload-icon {
+            font-size: 4em;
+            color: #ddd;
+            margin-bottom: 20px;
+        }
+        
+        .upload-text {
+            font-size: 1.2em;
+            color: #666;
+            margin-bottom: 20px;
+        }
+        
+        #fileInput {
+            display: none;
+        }
+        
+        .btn {
+            background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: transform 0.2s ease;
+            margin: 5px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(45deg, #ff6b6b 0%, #ffa726 100%);
+        }
+        
+        .btn-success {
+            background: linear-gradient(45deg, #4caf50 0%, #66bb6a 100%);
+        }
+        
+        .file-info {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            display: none;
+        }
+        
+        .config-section {
+            margin-top: 30px;
+            display: none;
+        }
+        
+        .config-tabs {
+            display: flex;
+            border-bottom: 2px solid #eee;
+            margin-bottom: 20px;
+        }
+        
+        .tab {
+            padding: 15px 25px;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s ease;
+        }
+        
+        .tab.active {
+            border-bottom-color: #4facfe;
+            color: #4facfe;
+            font-weight: bold;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .criteria-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .criteria-card {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            border-left: 4px solid #4facfe;
+        }
+        
+        .criteria-card h3 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .score-input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        
+        .textarea-input {
+            width: 100%;
+            min-height: 100px;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            margin: 10px 0;
+            resize: vertical;
+        }
+        
+        .agent-config {
+            background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .agent-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .agent-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .agent-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .agent-icon {
+            font-size: 2em;
+            margin-right: 15px;
+        }
+        
+        .custom-metrics {
+            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .metric-item {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .grading-section {
+            text-align: center;
+            margin: 30px 0;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #4facfe;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .agent-progress {
+            background: #f0f0f0;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 10px 0;
+        }
+        
+        .progress-bar {
+            background: #e0e0e0;
+            border-radius: 5px;
+            height: 8px;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            background: linear-gradient(45deg, #4facfe 0%, #00f2fe 100%);
+            height: 100%;
+            border-radius: 5px;
+            transition: width 0.3s ease;
+        }
+        
+        .results-section {
+            margin-top: 30px;
+            display: none;
+        }
+        
+        .score-display {
+            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+            border-radius: 10px;
+            padding: 30px;
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .final-score {
+            font-size: 3em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .agent-results {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .agent-result-card {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .consensus-section {
+            background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .feedback {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .error {
+            background: #ffe6e6;
+            color: #d32f2f;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+            display: none;
+        }
+        
+        .success {
+            background: #e8f5e8;
+            color: #2e7d32;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 Multi-Agent Engineering Report Grading System</h1>
+            <p>Collaborative AI assessment with customizable evaluation metrics and teacher supervision</p>
+        </div>
+        
+        <div class="main-content">
+            <!-- File Upload Area -->
+            <div class="upload-section" id="uploadArea">
+                <div class="upload-icon">📄</div>
+                <div class="upload-text">Click or drag to upload engineering report</div>
+                <p style="color: #999; font-size: 14px;">Supports PDF, DOC, DOCX, TXT formats</p>
+                <input type="file" id="fileInput" accept=".pdf,.doc,.docx,.txt" />
+                <button class="btn" onclick="document.getElementById('fileInput').click()">
+                    Choose File
+                </button>
+            </div>
+            
+            <!-- File Information Display -->
+            <div class="file-info" id="fileInfo">
+                <h3>📋 Uploaded File</h3>
+                <p id="fileName"></p>
+                <p id="fileSize"></p>
+            </div>
+            
+            <!-- Configuration Section -->
+            <div class="config-section" id="configSection">
+                <div class="config-tabs">
+                    <div class="tab active" onclick="switchTab('agents')">🤖 AI Agents</div>
+                    <div class="tab" onclick="switchTab('metrics')">📊 Custom Metrics</div>
+                    <div class="tab" onclick="switchTab('supervision')">👨‍🏫 Teacher Supervision</div>
+                </div>
+                
+                <!-- Agents Configuration -->
+                <div class="tab-content active" id="agents-tab">
+                    <div class="agent-config">
+                        <h2>🤖 Multi-Agent Configuration</h2>
+                        <p>Configure different AI agents to evaluate reports from various perspectives</p>
+                        
+                        <div class="agent-grid">
+                            <div class="agent-card">
+                                <div class="agent-header">
+                                    <div class="agent-icon">📝</div>
+                                    <div>
+                                        <h3>Content Expert Agent</h3>
+                                        <p>Technical accuracy & depth</p>
+                                    </div>
+                                </div>
+                                <label><input type="checkbox" checked id="agent1"> Enable Agent</label>
+                                <textarea class="textarea-input" id="agent1-prompt" placeholder="Custom instructions for content evaluation...">You are a technical content expert. Evaluate the engineering report for technical accuracy, depth of analysis, use of appropriate methodologies, and completeness of technical discussion.</textarea>
+                            </div>
+                            
+                            <div class="agent-card">
+                                <div class="agent-header">
+                                    <div class="agent-icon">🔤</div>
+                                    <div>
+                                        <h3>Language Expert Agent</h3>
+                                        <p>Grammar & writing quality</p>
+                                    </div>
+                                </div>
+                                <label><input type="checkbox" checked id="agent2"> Enable Agent</label>
+                                <textarea class="textarea-input" id="agent2-prompt" placeholder="Custom instructions for language evaluation...">You are an English language expert. Evaluate the report for grammar, vocabulary usage, sentence structure, clarity of expression, and overall writing quality.</textarea>
+                            </div>
+                            
+                            <div class="agent-card">
+                                <div class="agent-header">
+                                    <div class="agent-icon">📐</div>
+                                    <div>
+                                        <h3>Structure Expert Agent</h3>
+                                        <p>Organization & formatting</p>
+                                    </div>
+                                </div>
+                                <label><input type="checkbox" checked id="agent3"> Enable Agent</label>
+                                <textarea class="textarea-input" id="agent3-prompt" placeholder="Custom instructions for structure evaluation...">You are a document structure expert. Evaluate the report for logical organization, paragraph structure, use of headings, citation format, and overall document formatting.</textarea>
+                            </div>
+                            
+                            <div class="agent-card">
+                                <div class="agent-header">
+                                    <div class="agent-icon">💡</div>
+                                    <div>
+                                        <h3>Innovation Expert Agent</h3>
+                                        <p>Creativity & critical thinking</p>
+                                    </div>
+                                </div>
+                                <label><input type="checkbox" checked id="agent4"> Enable Agent</label>
+                                <textarea class="textarea-input" id="agent4-prompt" placeholder="Custom instructions for innovation evaluation...">You are an innovation and critical thinking expert. Evaluate the report for originality of ideas, creative problem-solving approaches, critical analysis, and innovative insights.</textarea>
+                            </div>
+                            
+                            <div class="agent-card">
+                                <div class="agent-header">
+                                    <div class="agent-icon">⚖️</div>
+                                    <div>
+                                        <h3>Consensus Moderator Agent</h3>
+                                        <p>Synthesizes all evaluations</p>
+                                    </div>
+                                </div>
+                                <label><input type="checkbox" checked id="agent5"> Enable Agent</label>
+                                <textarea class="textarea-input" id="agent5-prompt" placeholder="Custom instructions for consensus building...">You are a consensus moderator. Analyze the evaluations from all expert agents, identify agreements and disagreements, and provide a balanced final assessment with justifications.</textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Custom Metrics -->
+                <div class="tab-content" id="metrics-tab">
+                    <div class="custom-metrics">
+                        <h2>📊 Customizable Evaluation Metrics</h2>
+                        <p>Define specific evaluation criteria based on your course requirements</p>
+                        
+                        <div id="metricsContainer">
+                            <div class="metric-item">
+                                <h3>Content Quality</h3>
+                                <label>Weight (%): <input type="number" class="score-input" value="30" min="0" max="100" id="metric1-weight"></label>
+                                <label>Description:</label>
+                                <textarea class="textarea-input" id="metric1-desc" placeholder="Describe what this metric evaluates...">Technical accuracy, depth of analysis, use of appropriate engineering principles, completeness of problem solving approach.</textarea>
+                                <label>Scoring Rubric:</label>
+                                <textarea class="textarea-input" id="metric1-rubric" placeholder="Define scoring criteria...">90-100: Exceptional technical accuracy with comprehensive analysis
+80-89: Good technical content with minor gaps
+70-79: Adequate technical content with some errors
+60-69: Basic technical content with significant issues
+Below 60: Inadequate technical content</textarea>
+                            </div>
+                            
+                            <div class="metric-item">
+                                <h3>Language & Communication</h3>
+                                <label>Weight (%): <input type="number" class="score-input" value="25" min="0" max="100" id="metric2-weight"></label>
+                                <label>Description:</label>
+                                <textarea class="textarea-input" id="metric2-desc" placeholder="Describe what this metric evaluates...">Grammar, vocabulary, sentence structure, clarity of expression, professional writing style.</textarea>
+                                <label>Scoring Rubric:</label>
+                                <textarea class="textarea-input" id="metric2-rubric" placeholder="Define scoring criteria...">90-100: Excellent grammar and professional communication
+80-89: Good language skills with minor errors
+70-79: Adequate communication with some grammar issues
+60-69: Basic communication with frequent errors
+Below 60: Poor language skills impacting comprehension</textarea>
+                            </div>
+                        </div>
+                        
+                        <button class="btn btn-secondary" onclick="addCustomMetric()">Add Custom Metric</button>
+                        <button class="btn" onclick="loadPresetMetrics()">Load Engineering Preset</button>
+                    </div>
+                </div>
+                
+                <!-- Teacher Supervision -->
+                <div class="tab-content" id="supervision-tab">
+                    <div class="custom-metrics">
+                        <h2>👨‍🏫 Teacher Supervision & Feedback</h2>
+                        <p>Monitor AI grading and provide guidance for quality assurance</p>
+                        
+                        <div class="metric-item">
+                            <h3>Grading Guidelines</h3>
+                            <label>Overall Grading Philosophy:</label>
+                            <textarea class="textarea-input" id="teacher-philosophy" placeholder="Describe your overall approach to grading...">Focus on practical engineering applications, encourage innovative thinking, prioritize clear communication of technical concepts.</textarea>
+                            
+                            <label>Specific Requirements:</label>
+                            <textarea class="textarea-input" id="teacher-requirements" placeholder="List specific requirements for this assignment...">- Must include engineering calculations
+- Proper citation of technical sources required
+- Diagrams and figures should be clearly labeled
+- Conclusion should relate to real-world applications</textarea>
+                            
+                            <label>Common Issues to Watch:</label>
+                            <textarea class="textarea-input" id="teacher-issues" placeholder="Common problems you want AI to identify...">- Lack of proper unit conversions
+- Insufficient safety considerations
+- Weak connection between theory and practice
+- Poor presentation of numerical results</textarea>
+                        </div>
+                        
+                        <div class="metric-item">
+                            <h3>Quality Control Settings</h3>
+                            <label>Confidence Threshold: <input type="range" min="50" max="95" value="80" id="confidence-threshold"> <span id="confidence-value">80%</span></label>
+                            <p style="font-size: 14px; color: #666;">AI must be this confident before assigning final scores</p>
+                            
+                            <label><input type="checkbox" id="require-consensus" checked> Require agent consensus for final scoring</label>
+                            <label><input type="checkbox" id="flag-discrepancies" checked> Flag large score discrepancies for review</label>
+                            <label><input type="checkbox" id="detailed-reasoning" checked> Require detailed reasoning for all scores</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Grading Section -->
+            <div class="grading-section" id="gradingSection" style="display: none;">
+                <button class="btn btn-success" onclick="startMultiAgentGrading()">
+                    🚀 Start Multi-Agent Grading
+                </button>
+                <div class="error" id="errorMsg"></div>
+            </div>
+            
+            <!-- Loading and Progress -->
+            <div class="loading" id="loadingSection">
+                <div class="spinner"></div>
+                <p id="loadingText">Initializing AI agents...</p>
+                
+                <div id="agentProgress" style="margin-top: 20px;">
+                    <!-- Agent progress will be shown here -->
+                </div>
+            </div>
+            
+            <!-- Results Section -->
+            <div class="results-section" id="resultsSection">
+                <h2>📋 Multi-Agent Grading Results</h2>
+                
+                <div class="score-display">
+                    <div class="final-score" id="finalScore">85</div>
+                    <p>Consensus Score / 100</p>
+                    <p id="consensusInfo" style="font-size: 14px; color: #666;"></p>
+                </div>
+                
+                <div class="consensus-section">
+                    <h3>🤝 Agent Consensus Analysis</h3>
+                    <div id="consensusAnalysis">
+                        <!-- Consensus analysis will be displayed here -->
+                    </div>
+                </div>
+                
+                <div class="agent-results" id="agentResults">
+                    <!-- Individual agent results will be displayed here -->
+                </div>
+                
+                <div class="feedback">
+                    <h3>💬 Comprehensive Feedback & Recommendations</h3>
+                    <div id="comprehensiveFeedback">
+                        <!-- Comprehensive feedback will be displayed here -->
+                    </div>
+                </div>
+                
+                <div style="text-align: center; margin-top: 30px;">
+                    <button class="btn" onclick="exportDetailedResults()">Export Detailed Report</button>
+                    <button class="btn btn-secondary" onclick="adjustScores()">Manual Adjustment</button>
+                    <button class="btn" onclick="resetSystem()" style="background: #6c757d;">Start Over</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let uploadedFile = null;
+        let gradingResults = {};
+        let customMetricCount = 2;
+        
+        // File upload handling
+        document.getElementById('fileInput').addEventListener('change', handleFileSelect);
+        
+        // Drag and drop
+        const uploadArea = document.getElementById('uploadArea');
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        });
+        
+        // Confidence threshold display
+        document.getElementById('confidence-threshold').addEventListener('input', (e) => {
+            document.getElementById('confidence-value').textContent = e.target.value + '%';
+        });
+        
+        function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (file) {
+                handleFile(file);
+            }
+        }
+        
+        function handleFile(file) {
+            const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain'];
+            
+            if (!allowedTypes.includes(file.type)) {
+                showError('Please upload PDF, DOC, DOCX or TXT format files');
+                return;
+            }
+            
+            if (file.size > 10 * 1024 * 1024) {
+                showError('File size cannot exceed 10MB');
+                return;
+            }
+            
+            uploadedFile = file;
+            displayFileInfo(file);
+            document.getElementById('configSection').style.display = 'block';
+            document.getElementById('gradingSection').style.display = 'block';
+        }
+        
+        function displayFileInfo(file) {
+            document.getElementById('fileName').textContent = 'File Name: ' + file.name;
+            document.getElementById('fileSize').textContent = 'File Size: ' + (file.size / 1024 / 1024).toFixed(2) + ' MB';
+            document.getElementById('fileInfo').style.display = 'block';
+        }
+        
+        function switchTab(tabName) {
+            // Remove active class from all tabs and contents
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            // Add active class to selected tab and content
+            event.target.classList.add('active');
+            document.getElementById(tabName + '-tab').classList.add('active');
+        }
+        
+        function addCustomMetric() {
+            customMetricCount++;
+            const container = document.getElementById('metricsContainer');
+            const metricHtml = `
+                <div class="metric-item">
+                    <h3>Custom Metric ${customMetricCount}</h3>
+                    <label>Weight (%): <input type="number" class="score-input" value="0" min="0" max="100" id="metric${customMetricCount}-weight"></label>
+                    <label>Description:</label>
+                    <textarea class="textarea-input" id="metric${customMetricCount}-desc" placeholder="Describe what this metric evaluates..."></textarea>
+                    <label>Scoring Rubric:</label>
+                    <textarea class="textarea-input" id="metric${customMetricCount}-rubric" placeholder="Define scoring criteria..."></textarea>
+                    <button class="btn" onclick="removeMetric(this)" style="background: #dc3545;">Remove</button>
+                </div>
+            `;
+            container.insertAdjacentHTML('beforeend', metricHtml);
+        }
+        
+        function removeMetric(button) {
+            button.parentElement.remove();
+        }
+        
+        function loadPresetMetrics() {
+            const container = document.getElementById('metricsContainer');
+            container.innerHTML = `
+                <div class="metric-item">
+                    <h3>Technical Content</h3>
+                    <label>Weight (%): <input type="number" class="score-input" value="35" min="0" max="100" id="metric1-weight"></label>
+                    <label>Description:</label>
+                    <textarea class="textarea-input" id="metric1-desc">Engineering principles application, calculation accuracy, problem-solving methodology, technical depth.</textarea>
+                    <label>Scoring Rubric:</label>
+                    <textarea class="textarea-input" id="metric1-rubric">90-100: Excellent technical accuracy with innovative approaches
+80-89: Good technical content with minor calculation errors
+70-79: Adequate technical approach with some methodological issues
+60-69: Basic technical content with significant gaps
+Below 60: Inadequate technical analysis</textarea>
+                </div>
+                
+                <div class="metric-item">
+                    <h3>Professional Communication</h3>
+                    <label>Weight (%): <input type="number" class="score-input" value="25" min="0" max="100" id="metric2-weight"></label>
+                    <label>Description:</label>
+                    <textarea class="textarea-input" id="metric2-desc">Technical writing clarity, professional language, grammar, formatting according to engineering standards.</textarea>
+                    <label>Scoring Rubric:</label>
+                    <textarea class="textarea-input" id="metric2-rubric">90-100: Professional engineering communication standards
+80-89: Clear communication with minor language issues
+70-79: Generally clear with some communication barriers
+60-69: Basic communication with frequent errors
+Below 60: Poor communication impacting understanding</textarea>
+                </div>
+                
+                <div class="metric-item">
+                    <h3>Design & Analysis</h3>
+                    <label>Weight (%): <input type="number" class="score-input" value="25" min="0" max="100" id="metric3-weight"></label>
+                    <label>Description:</label>
+                    <textarea class="textarea-input" id="metric3-desc">Design process, analysis methodology, consideration of constraints, feasibility assessment.</textarea>
+                    <label>Scoring Rubric:</label>
+                    <textarea class="textarea-input" id="metric3-rubric">90-100: Comprehensive design with thorough analysis
+80-89: Good design approach with minor omissions
+70-79: Adequate design with some analytical gaps
+60-69: Basic design with limited analysis
+Below 60: Inadequate design methodology</textarea>
+                </div>
+                
+                <div class="metric-item">
+                    <h3>Innovation & Critical Thinking</h3>
+                    <label>Weight (%): <input type="number" class="score-input" value="15" min="0" max="100" id="metric4-weight"></label>
+                    <label>Description:</label>
+                    <textarea class="textarea-input" id="metric4-desc">Creative problem-solving, critical evaluation of alternatives, innovative insights, future considerations.</textarea>
+                    <label>Scoring Rubric:</label>
+                    <textarea class="textarea-input" id="metric4-rubric">90-100: Highly innovative with excellent critical analysis
+80-89: Good innovation with solid critical thinking
+70-79: Some innovative elements with basic analysis
+60-69: Limited innovation with minimal critical evaluation
+Below 60: Lack of innovative thinking</textarea>
+                </div>
+            `;
+            customMetricCount = 4;
+        }
+        
+        async function startMultiAgentGrading() {
+            if (!uploadedFile) {
+                showError('Please upload a file first');
+                return;
+            }
+            
+            if (!validateConfiguration()) {
+                return;
+            }
+            
+            document.getElementById('loadingSection').style.display = 'block';
+            document.getElementById('gradingSection').style.display = 'none';
+            hideError();
+            
+            try {
+                const fileContent = await readFileContent(uploadedFile);
+                await simulateMultiAgentGrading(fileContent);
+                
+            } catch (error) {
+                console.error('Multi-agent grading failed:', error);
+                showError('Multi-agent grading failed, please check configuration and try again');
+            } finally {
+                document.getElementById('loadingSection').style.display = 'none';
+            }
+        }
+        
+        function validateConfiguration() {
+            // Check if at least one agent is enabled
+            const enabledAgents = [];
+            for (let i = 1; i <= 5; i++) {
+                if (document.getElementById(`agent${i}`).checked) {
+                    enabledAgents.push(i);
+                }
+            }
+            
+            if (enabledAgents.length === 0) {
+                showError('Please enable at least one AI agent');
+                return false;
+            }
+            
+            // Check metric weights total 100%
+            const weights = [];
+            for (let i = 1; i <= customMetricCount; i++) {
+                const weightElement = document.getElementById(`metric${i}-weight`);
+                if (weightElement) {
+                    weights.push(parseInt(weightElement.value) || 0);
+                }
+            }
+            
+            const total = weights.reduce((sum, w) => sum + w, 0);
+            if (total !== 100) {
+                showError(`Metric weights must total 100%, currently ${total}%`);
+                return false;
+            }
+            
+            return true;
+        }
+        
+        async function readFileContent(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.onerror = reject;
+                
+                if (file.type === 'text/plain') {
+                    reader.readAsText(file);
+                } else {
+                    // For demonstration - in real app would parse PDF/DOC
+                    resolve('Sample engineering report content: This report analyzes the structural integrity of a bridge design...');
+                }
+            });
+        }
+        
+        async function simulateMultiAgentGrading(content) {
+            const agents = [
+                { id: 1, name: 'Content Expert', icon: '📝', color: '#4facfe' },
+                { id: 2, name: 'Language Expert', icon: '🔤', color: '#ff6b6b' },
+                { id: 3, name: 'Structure Expert', icon: '📐', color: '#4caf50' },
+                { id: 4, name: 'Innovation Expert', icon: '💡', color: '#ffa726' },
+                { id: 5, name: 'Consensus Moderator', icon: '⚖️', color: '#9c27b0' }
+            ];
+            
+            const enabledAgents = agents.filter(agent => 
+                document.getElementById(`agent${agent.id}`).checked
+            );
+            
+            // Initialize progress tracking
+            initializeAgentProgress(enabledAgents);
+            
+            const agentResults = {};
+            
+            // Simulate each agent's evaluation
+            for (const agent of enabledAgents) {
+                await simulateAgentEvaluation(agent, content, agentResults);
+            }
+            
+            // Generate consensus if moderator is enabled
+            if (enabledAgents.find(a => a.id === 5)) {
+                await generateConsensus(agentResults);
+            }
+            
+            // Display results
+            displayMultiAgentResults(agentResults);
+        }
+        
+        function initializeAgentProgress(agents) {
+            const progressContainer = document.getElementById('agentProgress');
+            progressContainer.innerHTML = agents.map(agent => `
+                <div class="agent-progress" id="progress-${agent.id}">
+                    <div style="display: flex; align-items: center; margin-bottom: 10px;">
+                        <span style="font-size: 1.5em; margin-right: 10px;">${agent.icon}</span>
+                        <span><strong>${agent.name}</strong></span>
+                        <span id="status-${agent.id}" style="margin-left: auto; color: #666;">Waiting...</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="bar-${agent.id}" style="width: 0%; background: ${agent.color};"></div>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        async function simulateAgentEvaluation(agent, content, results) {
+            const statusElement = document.getElementById(`status-${agent.id}`);
+            const barElement = document.getElementById(`bar-${agent.id}`);
+            
+            // Update status to analyzing
+            statusElement.textContent = 'Analyzing...';
+            statusElement.style.color = '#ffa726';
+            
+            // Simulate progress
+            for (let progress = 0; progress <= 100; progress += 20) {
+                barElement.style.width = progress + '%';
+                await new Promise(resolve => setTimeout(resolve, 300));
+            }
+            
+            // Generate simulated scores based on agent type
+            const scores = generateAgentScores(agent.id);
+            const feedback = generateAgentFeedback(agent.id, scores);
+            
+            results[agent.id] = {
+                name: agent.name,
+                icon: agent.icon,
+                color: agent.color,
+                scores: scores,
+                feedback: feedback,
+                confidence: Math.floor(Math.random() * 20) + 80 // 80-100%
+            };
+            
+            // Update status to complete
+            statusElement.textContent = 'Complete ✓';
+            statusElement.style.color = '#4caf50';
+            
+            // Small delay between agents
+            await new Promise(resolve => setTimeout(resolve, 500));
+        }
+        
+        function generateAgentScores(agentId) {
+            const baseScores = {
+                1: { content: 88, language: 82, structure: 85, innovation: 79 }, // Content Expert
+                2: { content: 85, language: 92, structure: 88, innovation: 83 }, // Language Expert  
+                3: { content: 82, language: 86, structure: 94, innovation: 81 }, // Structure Expert
+                4: { content: 86, language: 84, structure: 83, innovation: 91 }, // Innovation Expert
+                5: { content: 85, language: 86, structure: 87, innovation: 84 }  // Consensus Moderator
+            };
+            
+            const base = baseScores[agentId];
+            // Add some randomization
+            const scores = {};
+            Object.keys(base).forEach(key => {
+                scores[key] = Math.max(60, Math.min(100, base[key] + Math.floor(Math.random() * 10) - 5));
+            });
+            
+            return scores;
+        }
+        
+        function generateAgentFeedback(agentId, scores) {
+            const feedbackTemplates = {
+                1: [ // Content Expert
+                    scores.content >= 85 ? "✅ Excellent technical analysis with strong engineering principles application" : 
+                    scores.content >= 75 ? "⚠️ Good technical content, but could benefit from deeper analysis" :
+                    "❌ Technical content needs significant improvement in depth and accuracy",
+                    
+                    "Technical calculations are " + (scores.content >= 80 ? "well-executed" : "adequate but need verification"),
+                    "Engineering methodology shows " + (scores.content >= 85 ? "sophisticated" : "basic") + " understanding"
+                ],
+                2: [ // Language Expert
+                    scores.language >= 90 ? "✅ Exceptional English proficiency with professional writing standards" :
+                    scores.language >= 80 ? "⚠️ Good language skills with minor grammatical issues" :
+                    "❌ Language quality needs improvement for professional communication",
+                    
+                    "Grammar and syntax are " + (scores.language >= 85 ? "excellent" : "satisfactory with room for improvement"),
+                    "Technical vocabulary usage is " + (scores.language >= 80 ? "appropriate and precise" : "adequate but could be more sophisticated")
+                ],
+                3: [ // Structure Expert
+                    scores.structure >= 90 ? "✅ Outstanding document organization with clear logical flow" :
+                    scores.structure >= 80 ? "⚠️ Well-structured document with minor organizational issues" :
+                    "❌ Document structure needs significant reorganization",
+                    
+                    "Paragraph transitions are " + (scores.structure >= 85 ? "smooth and logical" : "adequate but could be improved"),
+                    "Citation and formatting follow " + (scores.structure >= 80 ? "professional standards" : "basic requirements with some errors")
+                ],
+                4: [ // Innovation Expert
+                    scores.innovation >= 85 ? "✅ Demonstrates creative problem-solving and innovative thinking" :
+                    scores.innovation >= 75 ? "⚠️ Shows some innovative elements but could push boundaries further" :
+                    "❌ Limited innovative thinking, needs more creative approaches",
+                    
+                    "Critical analysis demonstrates " + (scores.innovation >= 80 ? "sophisticated" : "developing") + " reasoning skills",
+                    "Future considerations and implications are " + (scores.innovation >= 75 ? "well-addressed" : "minimally explored")
+                ]
+            };
+            
+            return feedbackTemplates[agentId] || ["Standard feedback generated"];
+        }
+        
+        async function generateConsensus(agentResults) {
+            document.getElementById('loadingText').textContent = 'Generating consensus...';
+            
+            // Simulate consensus building delay
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            // Calculate weighted average scores
+            const allScores = Object.values(agentResults).filter(result => result.scores);
+            const consensusScores = {};
+            
+            ['content', 'language', 'structure', 'innovation'].forEach(metric => {
+                const scores = allScores.map(result => result.scores[metric]).filter(score => score !== undefined);
+                consensusScores[metric] = Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length);
+            });
+            
+            // Generate consensus analysis
+            const agreements = [];
+            const disagreements = [];
+            
+            Object.keys(consensusScores).forEach(metric => {
+                const scores = allScores.map(result => result.scores[metric]).filter(score => score !== undefined);
+                const max = Math.max(...scores);
+                const min = Math.min(...scores);
+                const range = max - min;
+                
+                if (range <= 5) {
+                    agreements.push(`Strong agreement on ${metric} (range: ${range} points)`);
+                } else if (range <= 10) {
+                    agreements.push(`Moderate agreement on ${metric} (range: ${range} points)`);
+                } else {
+                    disagreements.push(`Disagreement on ${metric} (range: ${range} points) - requires review`);
+                }
+            });
+            
+            agentResults.consensus = {
+                scores: consensusScores,
+                agreements: agreements,
+                disagreements: disagreements,
+                confidence: disagreements.length === 0 ? 95 : Math.max(70, 90 - disagreements.length * 10)
+            };
+        }
+        
+        function displayMultiAgentResults(agentResults) {
+            // Calculate final score
+            const consensusScores = agentResults.consensus ? agentResults.consensus.scores : 
+                calculateAverageScores(agentResults);
+            
+            const weights = getMetricWeights();
+            const finalScore = calculateWeightedScore(consensusScores, weights);
+            
+            gradingResults = {
+                finalScore: finalScore,
+                agentResults: agentResults,
+                consensusScores: consensusScores
+            };
+            
+            // Display final score
+            document.getElementById('finalScore').textContent = finalScore;
+            
+            // Display consensus information
+            if (agentResults.consensus) {
+                const confidence = agentResults.consensus.confidence;
+                document.getElementById('consensusInfo').textContent = 
+                    `Consensus confidence: ${confidence}% | Based on ${Object.keys(agentResults).length - 1} agents`;
+                
+                // Display consensus analysis
+                const consensusHtml = `
+                    <div style="margin: 15px 0;">
+                        <h4 style="color: #4caf50;">✓ Agent Agreements</h4>
+                        ${agentResults.consensus.agreements.map(item => `<p>• ${item}</p>`).join('')}
+                    </div>
+                    ${agentResults.consensus.disagreements.length > 0 ? `
+                    <div style="margin: 15px 0;">
+                        <h4 style="color: #ff6b6b;">⚠ Areas of Disagreement</h4>
+                        ${agentResults.consensus.disagreements.map(item => `<p>• ${item}</p>`).join('')}
+                    </div>` : ''}
+                `;
+                document.getElementById('consensusAnalysis').innerHTML = consensusHtml;
+            }
+            
+            // Display individual agent results
+            const agentResultsHtml = Object.entries(agentResults)
+                .filter(([key]) => key !== 'consensus')
+                .map(([agentId, result]) => `
+                    <div class="agent-result-card">
+                        <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                            <span style="font-size: 2em; margin-right: 15px;">${result.icon}</span>
+                            <div>
+                                <h3 style="color: ${result.color};">${result.name}</h3>
+                                <p style="font-size: 14px; color: #666;">Confidence: ${result.confidence}%</p>
+                            </div>
+                        </div>
+                        
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px; margin: 15px 0;">
+                            ${Object.entries(result.scores).map(([metric, score]) => `
+                                <div style="text-align: center; padding: 10px; background: #f8f9fa; border-radius: 5px;">
+                                    <div style="font-size: 1.5em; font-weight: bold; color: ${result.color};">${score}</div>
+                                    <div style="font-size: 12px; text-transform: capitalize;">${metric}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                        
+                        <div style="margin-top: 15px;">
+                            <h4>Feedback:</h4>
+                            ${result.feedback.map(item => `<p style="margin: 5px 0; font-size: 14px;">• ${item}</p>`).join('')}
+                        </div>
+                    </div>
+                `).join('');
+            
+            document.getElementById('agentResults').innerHTML = agentResultsHtml;
+            
+            // Generate comprehensive feedback
+            generateComprehensiveFeedback(agentResults, consensusScores);
+            
+            // Show results
+            document.getElementById('resultsSection').style.display = 'block';
+            document.getElementById('resultsSection').scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        function calculateAverageScores(agentResults) {
+            const allScores = Object.values(agentResults).filter(result => result.scores);
+            const averageScores = {};
+            
+            ['content', 'language', 'structure', 'innovation'].forEach(metric => {
+                const scores = allScores.map(result => result.scores[metric]).filter(score => score !== undefined);
+                if (scores.length > 0) {
+                    averageScores[metric] = Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length);
+                }
+            });
+            
+            return averageScores;
+        }
+        
+        function getMetricWeights() {
+            const weights = {};
+            const metricNames = ['content', 'language', 'structure', 'innovation'];
+            
+            for (let i = 1; i <= customMetricCount; i++) {
+                const weightElement = document.getElementById(`metric${i}-weight`);
+                if (weightElement && metricNames[i-1]) {
+                    weights[metricNames[i-1]] = parseInt(weightElement.value) || 0;
+                }
+            }
+            
+            return weights;
+        }
+        
+        function calculateWeightedScore(scores, weights) {
+            let totalScore = 0;
+            let totalWeight = 0;
+            
+            Object.entries(weights).forEach(([metric, weight]) => {
+                if (scores[metric] !== undefined) {
+                    totalScore += scores[metric] * weight;
+                    totalWeight += weight;
+                }
+            });
+            
+            return totalWeight > 0 ? Math.round(totalScore / totalWeight) : 0;
+        }
+        
+        function generateComprehensiveFeedback(agentResults, consensusScores) {
+            const feedback = [];
+            
+            // Overall assessment
+            const overallScore = Object.values(consensusScores).reduce((sum, score) => sum + score, 0) / Object.keys(consensusScores).length;
+            
+            if (overallScore >= 90) {
+                feedback.push("🌟 <strong>Exceptional Work:</strong> This report demonstrates outstanding quality across all evaluation criteria.");
+            } else if (overallScore >= 80) {
+                feedback.push("✅ <strong>Strong Performance:</strong> This report shows high quality with some areas for minor improvement.");
+            } else if (overallScore >= 70) {
+                feedback.push("⚠️ <strong>Good Foundation:</strong> This report has solid fundamentals but would benefit from targeted improvements.");
+            } else {
+                feedback.push("❌ <strong>Needs Improvement:</strong> This report requires significant revision across multiple areas.");
+            }
+            
+            // Specific recommendations
+            Object.entries(consensusScores).forEach(([metric, score]) => {
+                if (score >= 85) {
+                    feedback.push(`<strong>${metric.charAt(0).toUpperCase() + metric.slice(1)}:</strong> Excellent performance - maintain this standard.`);
+                } else if (score >= 75) {
+                    feedback.push(`<strong>${metric.charAt(0).toUpperCase() + metric.slice(1)}:</strong> Good work with room for enhancement.`);
+                } else {
+                    feedback.push(`<strong>${metric.charAt(0).toUpperCase() + metric.slice(1)}:</strong> Priority area for improvement.`);
+                }
+            });
+            
+            // Teacher supervision insights
+            const teacherPhilosophy = document.getElementById('teacher-philosophy').value;
+            if (teacherPhilosophy.trim()) {
+                feedback.push(`<strong>Alignment with Course Goals:</strong> ${getAlignmentFeedback(consensusScores, teacherPhilosophy)}`);
+            }
+            
+            document.getElementById('comprehensiveFeedback').innerHTML = 
+                feedback.map(item => `<p style="margin: 10px 0; line-height: 1.6;">${item}</p>`).join('');
+        }
+        
+        function getAlignmentFeedback(scores, philosophy) {
+            const avgScore = Object.values(scores).reduce((sum, score) => sum + score, 0) / Object.keys(scores).length;
+            
+            if (philosophy.toLowerCase().includes('practical') && scores.content >= 85) {
+                return "Excellent alignment with practical engineering focus.";
+            } else if (philosophy.toLowerCase().includes('innovative') && scores.innovation >= 85) {
+                return "Strong demonstration of innovative thinking as emphasized in course.";
+            } else if (philosophy.toLowerCase().includes('communication') && scores.language >= 85) {
+                return "Good alignment with communication-focused learning objectives.";
+            } else {
+                return "Consider reviewing alignment with stated course philosophy and requirements.";
+            }
+        }
+        
+        function exportDetailedResults() {
+            if (!gradingResults.finalScore) {
+                showError('No results to export');
+                return;
+            }
+            
+            const fileName = uploadedFile ? uploadedFile.name : 'Report';
+            const timestamp = new Date().toLocaleString();
+            
+            let reportContent = `Multi-Agent Engineering Report Assessment
+================================================
+
+Report File: ${fileName}
+Assessment Date: ${timestamp}
+Final Score: ${gradingResults.finalScore}/100
+
+INDIVIDUAL AGENT EVALUATIONS
+============================
+
+`;
+            
+            Object.entries(gradingResults.agentResults)
+                .filter(([key]) => key !== 'consensus')
+                .forEach(([agentId, result]) => {
+                    reportContent += `${result.name} Agent (${result.confidence}% confidence)
+${'-'.repeat(result.name.length + 20)}
+`;
+                    Object.entries(result.scores).forEach(([metric, score]) => {
+                        reportContent += `${metric.charAt(0).toUpperCase() + metric.slice(1)}: ${score}/100\n`;
+                    });
+                    
+                    reportContent += `\nFeedback:\n`;
+                    result.feedback.forEach(item => {
+                        reportContent += `• ${item}\n`;
+                    });
+                    reportContent += '\n';
+                });
+            
+            if (gradingResults.agentResults.consensus) {
+                reportContent += `CONSENSUS ANALYSIS
+=================
+Confidence Level: ${gradingResults.agentResults.consensus.confidence}%
+
+Agreements:
+${gradingResults.agentResults.consensus.agreements.map(item => `• ${item}`).join('\n')}
+
+${gradingResults.agentResults.consensus.disagreements.length > 0 ? 
+`Disagreements:
+${gradingResults.agentResults.consensus.disagreements.map(item => `• ${item}`).join('\n')}` : ''}
+
+`;
+            }
+            
+            reportContent += `FINAL ASSESSMENT
+===============
+${document.getElementById('comprehensiveFeedback').textContent}
+
+EVALUATION CONFIGURATION
+=======================
+Metrics Used:
+`;
+            for (let i = 1; i <= customMetricCount; i++) {
+                const weightElement = document.getElementById(`metric${i}-weight`);
+                const descElement = document.getElementById(`metric${i}-desc`);
+                if (weightElement && descElement) {
+                    reportContent += `• Metric ${i}: ${weightElement.value}% - ${descElement.value}\n`;
+                }
+            }
+            
+            // Download file
+            const blob = new Blob([reportContent], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${fileName}_MultiAgent_Assessment.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+        
+        function adjustScores() {
+            alert('Manual score adjustment feature would be implemented here, allowing teachers to override specific agent scores or provide additional feedback.');
+        }
+        
+        function resetSystem() {
+            uploadedFile = null;
+            gradingResults = {};
+            
+            document.getElementById('fileInput').value = '';
+            document.getElementById('fileInfo').style.display = 'none';
+            document.getElementById('configSection').style.display = 'none';
+            document.getElementById('gradingSection').style.display = 'none';
+            document.getElementById('resultsSection').style.display = 'none';
+            document.getElementById('loadingSection').style.display = 'none';
+            
+            hideError();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+        
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMsg');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+        
+        function hideError() {
+            document.getElementById('errorMsg').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
