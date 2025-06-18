@@ -47,6 +47,7 @@
             const [gradingResults, setGradingResults] = useState([]);
             const [loading, setLoading] = useState(false);
             const [progress, setProgress] = useState(0);
+            const [agentDialogues, setAgentDialogues] = useState([]);
             const [apiSettings, setApiSettings] = useState({
                 provider: 'openai',
                 apiKey: '',
@@ -243,12 +244,53 @@ FEEDBACK: [your feedback]`;
                         }
                         
                         const avgScore = Math.round(agentScores.reduce((sum, a) => sum + a.score, 0) / agentScores.length);
+                        
+                        // Generate agent dialogue for this metric
+                        const dialogue = [];
+                        
+                        // Each agent shares their evaluation
+                        for (let i = 0; i < agents.length; i++) {
+                            dialogue.push({
+                                agent: agents[i].name,
+                                emoji: agents[i].emoji,
+                                message: `Based on my analysis as ${agents[i].expertise}, I gave ${metric.name} a score of ${agentScores[i].score}. ${agentScores[i].feedback}`,
+                                type: 'evaluation'
+                            });
+                        }
+                        
+                        // Add discussion
+                        if (agents.length > 1) {
+                            const scoreRange = Math.max(...agentScores.map(a => a.score)) - Math.min(...agentScores.map(a => a.score));
+                            if (scoreRange > 10) {
+                                dialogue.push({
+                                    agent: agents[0].name,
+                                    emoji: agents[0].emoji,
+                                    message: `I notice we have some disagreement on the scoring. Let me explain my reasoning...`,
+                                    type: 'discussion'
+                                });
+                                dialogue.push({
+                                    agent: agents[1].name,
+                                    emoji: agents[1].emoji,
+                                    message: `That's a valid point. From my perspective, the key strengths are...`,
+                                    type: 'discussion'
+                                });
+                            }
+                        }
+                        
+                        dialogue.push({
+                            agent: 'Consensus',
+                            emoji: '🤝',
+                            message: `After our discussion, we've reached a consensus score of ${avgScore} for ${metric.name}.`,
+                            type: 'consensus'
+                        });
+                        
                         results.push({
                             ...metric,
                             score: avgScore,
                             agentScores,
                             consensus: avgScore,
-                            feedback: `Based on multiple agent evaluations, the ${metric.name} demonstrates ${avgScore >= 80 ? 'strong' : avgScore >= 60 ? 'adequate' : 'needs improvement'} performance.`
+                            feedback: `Based on multiple agent evaluations, the ${metric.name} demonstrates ${avgScore >= 80 ? 'strong' : avgScore >= 60 ? 'adequate' : 'needs improvement'} performance.`,
+                            dialogue: dialogue
                         });
                     }
                     
@@ -336,6 +378,57 @@ FEEDBACK: [your feedback]`;
                     feedback: `Detailed feedback for ${metric.name}: The essay demonstrates good understanding with clear arguments.`
                 }));
                 
+                // Generate simulated agent dialogues
+                const dialogues = metrics.map(metric => {
+                    const discussion = [];
+                    
+                    // Initial evaluations
+                    agents.forEach(agent => {
+                        discussion.push({
+                            agent: agent.name,
+                            emoji: agent.emoji,
+                            message: `I've evaluated the ${metric.name}. From my perspective as ${agent.expertise}, I would give this a score of ${Math.floor(Math.random() * 30) + 70}.`,
+                            type: 'evaluation'
+                        });
+                    });
+                    
+                    // Discussion phase
+                    discussion.push({
+                        agent: agents[0].name,
+                        emoji: agents[0].emoji,
+                        message: `I noticed the thesis statement is clear, but could be more specific. What do others think?`,
+                        type: 'discussion'
+                    });
+                    
+                    discussion.push({
+                        agent: agents[1].name,
+                        emoji: agents[1].emoji,
+                        message: `I agree. The structure supports the argument well, though transitions between paragraphs could be smoother.`,
+                        type: 'discussion'
+                    });
+                    
+                    discussion.push({
+                        agent: agents[2].name,
+                        emoji: agents[2].emoji,
+                        message: `From a language perspective, the vocabulary is appropriate but some sentences are overly complex.`,
+                        type: 'discussion'
+                    });
+                    
+                    // Consensus
+                    discussion.push({
+                        agent: 'Consensus',
+                        emoji: '🤝',
+                        message: `Based on our discussion, we agree on a consensus score of ${results.find(r => r.name === metric.name).consensus} for ${metric.name}.`,
+                        type: 'consensus'
+                    });
+                    
+                    return {
+                        metric: metric.name,
+                        dialogue: discussion
+                    };
+                });
+                
+                setAgentDialogues(dialogues);
                 setGradingResults(results);
                 setLoading(false);
                 setPhase('supervision');
@@ -781,6 +874,10 @@ FEEDBACK: [your feedback]`;
                                                     </div>
                                                 ))}
                                             </div>
+                                            <div className="mt-2 text-sm text-gray-600">
+                                                <p className="font-medium">💡 What is Consensus Score?</p>
+                                                <p className="text-xs">The average score from all AI agents after their discussion</p>
+                                            </div>
                                         </div>
                                     ))}
                                 </div>
@@ -813,6 +910,9 @@ FEEDBACK: [your feedback]`;
                         <div className="space-y-6">
                             <div className="bg-white rounded-lg shadow-md p-6">
                                 <h2 className="text-2xl font-bold mb-4">✏️ Manual Score Adjustment</h2>
+                                <p className="text-sm text-gray-600 mb-4">
+                                    Fine-tune the AI-generated scores based on your professional judgment
+                                </p>
                                 <div className="space-y-4">
                                     {gradingResults.map((result, index) => (
                                         <div key={index} className="border rounded-lg p-4">
@@ -918,6 +1018,32 @@ FEEDBACK: [your feedback]`;
                                                 <p className="text-sm text-purple-600 italic">
                                                     Manual: {result.manualFeedback}
                                                 </p>
+                                            )}
+                                            
+                                            {/* Agent Dialogue History */}
+                                            {result.dialogue && result.dialogue.length > 0 && (
+                                                <details className="mt-3">
+                                                    <summary className="cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900">
+                                                        View Agent Discussion ({result.dialogue.length} messages)
+                                                    </summary>
+                                                    <div className="mt-2 space-y-2 max-h-60 overflow-y-auto">
+                                                        {result.dialogue.map((msg, msgIndex) => (
+                                                            <div key={msgIndex} className={`p-2 rounded-lg text-sm ${
+                                                                msg.type === 'consensus' ? 'bg-green-100' : 
+                                                                msg.type === 'evaluation' ? 'bg-blue-50' : 
+                                                                'bg-gray-100'
+                                                            }`}>
+                                                                <div className="flex items-start gap-2">
+                                                                    <span className="text-lg">{msg.emoji}</span>
+                                                                    <div className="flex-1">
+                                                                        <span className="font-medium">{msg.agent}:</span>
+                                                                        <span className="ml-2">{msg.message}</span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </details>
                                             )}
                                         </div>
                                     ))}
