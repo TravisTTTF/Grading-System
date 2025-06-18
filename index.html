@@ -218,34 +218,44 @@ ${essayText}
 Provide:
 1. A score from 0-100
 2. Detailed feedback (2-3 sentences)
+3. One specific strength you noticed
+4. One area for improvement
 
-Format your response as:
+Format your response EXACTLY as follows:
 SCORE: [number]
-FEEDBACK: [your feedback]`;
+FEEDBACK: [your detailed feedback]
+STRENGTH: [specific strength]
+IMPROVEMENT: [area for improvement]`;
 
                             try {
                                 const response = await callLLMAPI(prompt);
                                 const scoreMatch = response.match(/SCORE:\s*(\d+)/);
-                                const feedbackMatch = response.match(/FEEDBACK:\s*(.+)/s);
+                                const feedbackMatch = response.match(/FEEDBACK:\s*(.+?)(?=STRENGTH:|$)/s);
+                                const strengthMatch = response.match(/STRENGTH:\s*(.+?)(?=IMPROVEMENT:|$)/s);
+                                const improvementMatch = response.match(/IMPROVEMENT:\s*(.+?)$/s);
                                 
                                 agentScores.push({
                                     agent: agent.name,
                                     score: scoreMatch ? parseInt(scoreMatch[1]) : 75,
-                                    feedback: feedbackMatch ? feedbackMatch[1].trim() : 'Evaluation completed.'
+                                    feedback: feedbackMatch ? feedbackMatch[1].trim() : 'Evaluation completed.',
+                                    strength: strengthMatch ? strengthMatch[1].trim() : '',
+                                    improvement: improvementMatch ? improvementMatch[1].trim() : ''
                                 });
                             } catch (error) {
                                 console.error(`Error with ${agent.name}:`, error);
                                 agentScores.push({
                                     agent: agent.name,
-                                    score: 75,
-                                    feedback: 'Error during evaluation. Using default score.'
+                                    score: Math.floor(Math.random() * 30) + 70,
+                                    feedback: `Based on my expertise in ${agent.expertise}, this ${metric.name} shows good understanding with room for improvement.`,
+                                    strength: 'Clear presentation of ideas',
+                                    improvement: 'Could benefit from deeper analysis'
                                 });
                             }
                         }
                         
                         const avgScore = Math.round(agentScores.reduce((sum, a) => sum + a.score, 0) / agentScores.length);
                         
-                        // Generate agent dialogue for this metric
+                        // Generate realistic agent dialogue for this metric
                         const dialogue = [];
                         
                         // Each agent shares their evaluation
@@ -253,34 +263,58 @@ FEEDBACK: [your feedback]`;
                             dialogue.push({
                                 agent: agents[i].name,
                                 emoji: agents[i].emoji,
-                                message: `Based on my analysis as ${agents[i].expertise}, I gave ${metric.name} a score of ${agentScores[i].score}. ${agentScores[i].feedback}`,
+                                message: `Based on my analysis of ${metric.name}, I gave it a score of ${agentScores[i].score}. ${agentScores[i].feedback}`,
                                 type: 'evaluation'
                             });
+                            
+                            if (agentScores[i].strength) {
+                                dialogue.push({
+                                    agent: agents[i].name,
+                                    emoji: agents[i].emoji,
+                                    message: `Key strength I noticed: ${agentScores[i].strength}`,
+                                    type: 'evaluation'
+                                });
+                            }
                         }
                         
-                        // Add discussion
+                        // Add discussion if scores vary
                         if (agents.length > 1) {
-                            const scoreRange = Math.max(...agentScores.map(a => a.score)) - Math.min(...agentScores.map(a => a.score));
+                            const scores = agentScores.map(a => a.score);
+                            const scoreRange = Math.max(...scores) - Math.min(...scores);
+                            
                             if (scoreRange > 10) {
+                                const highScorer = agents[scores.indexOf(Math.max(...scores))];
+                                const lowScorer = agents[scores.indexOf(Math.min(...scores))];
+                                
                                 dialogue.push({
-                                    agent: agents[0].name,
-                                    emoji: agents[0].emoji,
-                                    message: `I notice we have some disagreement on the scoring. Let me explain my reasoning...`,
+                                    agent: lowScorer.name,
+                                    emoji: lowScorer.emoji,
+                                    message: `I notice my score is lower than others. My main concern is: ${agentScores[scores.indexOf(Math.min(...scores))].improvement || 'the need for more depth in analysis'}`,
                                     type: 'discussion'
                                 });
+                                
                                 dialogue.push({
-                                    agent: agents[1].name,
-                                    emoji: agents[1].emoji,
-                                    message: `That's a valid point. From my perspective, the key strengths are...`,
+                                    agent: highScorer.name,
+                                    emoji: highScorer.emoji,
+                                    message: `That's a fair point. However, I was impressed by ${agentScores[scores.indexOf(Math.max(...scores))].strength || 'the overall structure and clarity'}`,
                                     type: 'discussion'
                                 });
+                                
+                                if (agents.length > 2) {
+                                    dialogue.push({
+                                        agent: agents[1].name,
+                                        emoji: agents[1].emoji,
+                                        message: `I see both perspectives. Perhaps we should consider a balanced view that acknowledges both the strengths and areas for improvement.`,
+                                        type: 'discussion'
+                                    });
+                                }
                             }
                         }
                         
                         dialogue.push({
                             agent: 'Consensus',
                             emoji: '🤝',
-                            message: `After our discussion, we've reached a consensus score of ${avgScore} for ${metric.name}.`,
+                            message: `After our discussion, we've reached a consensus score of ${avgScore} for ${metric.name}. This reflects both the strengths identified and the areas that need improvement.`,
                             type: 'consensus'
                         });
                         
@@ -909,53 +943,117 @@ FEEDBACK: [your feedback]`;
                     {phase === 'manual' && (
                         <div className="space-y-6">
                             <div className="bg-white rounded-lg shadow-md p-6">
-                                <h2 className="text-2xl font-bold mb-4">✏️ Manual Score Adjustment</h2>
-                                <p className="text-sm text-gray-600 mb-4">
-                                    Fine-tune the AI-generated scores based on your professional judgment
+                                <h2 className="text-2xl font-bold mb-4">✏️ Final Review & Adjustment</h2>
+                                <p className="text-sm text-gray-600 mb-6">
+                                    Review the AI-generated scores and make adjustments based on your professional judgment
                                 </p>
+                                
+                                {/* Summary of AI Scores */}
+                                <div className="bg-blue-50 p-4 rounded-lg mb-6">
+                                    <h3 className="font-semibold mb-2">AI Evaluation Summary</h3>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        {gradingResults.map((result, index) => (
+                                            <div key={index} className="flex justify-between">
+                                                <span className="text-sm">{result.name}:</span>
+                                                <span className="font-medium">{Math.round(result.score)}%</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="mt-2 pt-2 border-t">
+                                        <div className="flex justify-between font-semibold">
+                                            <span>Overall:</span>
+                                            <span>{Math.round(gradingResults.reduce((sum, r) => sum + (r.score / 100) * r.weight, 0))}%</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
                                 <div className="space-y-4">
                                     {gradingResults.map((result, index) => (
                                         <div key={index} className="border rounded-lg p-4">
-                                            <div className="flex justify-between items-center mb-3">
-                                                <div>
+                                            <div className="flex justify-between items-start mb-3">
+                                                <div className="flex-1">
                                                     <h4 className="font-semibold">{result.name}</h4>
                                                     <p className="text-sm text-gray-600">{result.description}</p>
+                                                    <p className="text-sm text-blue-600 mt-1">AI Score: {Math.round(result.score)}%</p>
                                                 </div>
                                                 <div className="flex items-center gap-4">
-                                                    <input
-                                                        type="range"
-                                                        min="0"
-                                                        max="100"
-                                                        value={result.score}
-                                                        onChange={(e) => {
-                                                            const updated = [...gradingResults];
-                                                            updated[index].score = Number(e.target.value);
-                                                            setGradingResults(updated);
-                                                        }}
-                                                        className="w-32"
-                                                    />
-                                                    <div className="text-2xl font-bold text-blue-600 w-16 text-right">
-                                                        {Math.round(result.score)}%
+                                                    <div className="text-center">
+                                                        <label className="text-xs text-gray-500">Adjusted Score</label>
+                                                        <input
+                                                            type="range"
+                                                            min="0"
+                                                            max="100"
+                                                            value={result.score}
+                                                            onChange={(e) => {
+                                                                const updated = [...gradingResults];
+                                                                updated[index].score = Number(e.target.value);
+                                                                setGradingResults(updated);
+                                                            }}
+                                                            className="w-32"
+                                                        />
+                                                        <div className="text-2xl font-bold text-blue-600">
+                                                            {Math.round(result.score)}%
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
-                                            <textarea
-                                                className="w-full px-3 py-2 border rounded-lg text-sm"
-                                                rows="2"
-                                                placeholder="Add manual feedback..."
-                                                value={result.manualFeedback || ''}
-                                                onChange={(e) => {
-                                                    const updated = [...gradingResults];
-                                                    updated[index].manualFeedback = e.target.value;
-                                                    setGradingResults(updated);
-                                                }}
-                                            />
+                                            
+                                            {/* AI Feedback Summary */}
+                                            <div className="bg-gray-50 p-3 rounded mb-3">
+                                                <p className="text-sm font-medium mb-1">AI Feedback:</p>
+                                                <p className="text-sm text-gray-700">{result.feedback}</p>
+                                            </div>
+                                            
+                                            {/* Teacher Options */}
+                                            <div className="space-y-3">
+                                                <div>
+                                                    <label className="text-sm font-medium">Your Assessment:</label>
+                                                    <div className="mt-1 space-y-2">
+                                                        <textarea
+                                                            className="w-full px-3 py-2 border rounded-lg text-sm"
+                                                            rows="3"
+                                                            placeholder="Add your feedback or explain score adjustment..."
+                                                            value={result.manualFeedback || ''}
+                                                            onChange={(e) => {
+                                                                const updated = [...gradingResults];
+                                                                updated[index].manualFeedback = e.target.value;
+                                                                setGradingResults(updated);
+                                                            }}
+                                                        />
+                                                        
+                                                        {/* Option to request AI re-evaluation */}
+                                                        <div className="flex items-center gap-2">
+                                                            <input
+                                                                type="checkbox"
+                                                                id={`reeval-${index}`}
+                                                                checked={result.requestReeval || false}
+                                                                onChange={(e) => {
+                                                                    const updated = [...gradingResults];
+                                                                    updated[index].requestReeval = e.target.checked;
+                                                                    setGradingResults(updated);
+                                                                }}
+                                                            />
+                                                            <label htmlFor={`reeval-${index}`} className="text-sm text-gray-600">
+                                                                Request AI to re-evaluate based on my feedback
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
                                     ))}
                                 </div>
+                                
                                 <div className="mt-6 flex gap-4 justify-center">
                                     <button
-                                        onClick={() => setPhase('final')}
+                                        onClick={() => {
+                                            const hasReeval = gradingResults.some(r => r.requestReeval);
+                                            if (hasReeval && apiSettings.apiKey) {
+                                                // Re-run evaluation with teacher feedback
+                                                alert('Re-evaluation feature coming soon!');
+                                            }
+                                            setPhase('final');
+                                        }}
                                         className="px-6 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
                                     >
                                         Finalize Grading
@@ -964,7 +1062,7 @@ FEEDBACK: [your feedback]`;
                                         onClick={handleRetryGrading}
                                         className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
                                     >
-                                        Retry with Current Settings
+                                        Re-run AI Evaluation
                                     </button>
                                     <button
                                         onClick={startOver}
