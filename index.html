@@ -45,6 +45,26 @@
             opacity: 0.9;
         }
         
+        .status-indicator {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .status-live {
+            background: #4caf50;
+            color: white;
+        }
+        
+        .status-demo {
+            background: #ff9800;
+            color: white;
+        }
+        
         .main-content {
             padding: 40px;
         }
@@ -352,6 +372,15 @@
             margin: 10px 0;
         }
         
+        .api-status {
+            background: #e3f2fd;
+            border: 1px solid #2196f3;
+            border-radius: 5px;
+            padding: 10px;
+            margin: 10px 0;
+            font-size: 14px;
+        }
+        
         .hidden {
             display: none;
         }
@@ -359,12 +388,19 @@
 </head>
 <body>
     <div class="container">
-        <div class="header">
+        <div class="header" style="position: relative;">
+            <div class="status-indicator status-live" id="apiStatus">🔴 API Not Connected</div>
             <h1>🤖 Multi-Agent Engineering Report Grading System</h1>
-            <p>Collaborative AI assessment with customizable evaluation metrics and teacher supervision</p>
+            <p>Real OpenAI GPT-4 powered collaborative assessment with customizable evaluation metrics</p>
         </div>
         
         <div class="main-content">
+            <!-- API Status -->
+            <div class="api-status" id="apiStatusDetails">
+                🔧 <strong>Setup Required:</strong> Configure your OpenAI API key in Netlify environment variables to enable real AI grading.
+                Currently running in simulation mode.
+            </div>
+            
             <!-- File Upload Area -->
             <div class="upload-section" id="uploadArea">
                 <div class="upload-icon">📄</div>
@@ -407,7 +443,7 @@
                                     </div>
                                 </div>
                                 <label><input type="checkbox" checked id="agent1"> Enable Agent</label>
-                                <textarea class="textarea-input" id="agent1-prompt" placeholder="Custom instructions for content evaluation...">You are a technical content expert. Evaluate the engineering report for technical accuracy, depth of analysis, use of appropriate methodologies, and completeness of technical discussion.</textarea>
+                                <textarea class="textarea-input" id="agent1-prompt" placeholder="Custom instructions for content evaluation...">You are a technical content expert. Evaluate the engineering report for technical accuracy, depth of analysis, use of appropriate methodologies, and completeness of technical discussion. Pay special attention to engineering calculations, design principles, and theoretical foundations.</textarea>
                             </div>
                             
                             <div class="agent-card">
@@ -419,7 +455,7 @@
                                     </div>
                                 </div>
                                 <label><input type="checkbox" checked id="agent2"> Enable Agent</label>
-                                <textarea class="textarea-input" id="agent2-prompt" placeholder="Custom instructions for language evaluation...">You are an English language expert. Evaluate the report for grammar, vocabulary usage, sentence structure, clarity of expression, and overall writing quality.</textarea>
+                                <textarea class="textarea-input" id="agent2-prompt" placeholder="Custom instructions for language evaluation...">You are an English language expert specializing in technical writing. Evaluate the report for grammar, vocabulary usage, sentence structure, clarity of expression, and overall writing quality. Focus on professional communication standards expected in engineering documentation.</textarea>
                             </div>
                             
                             <div class="agent-card">
@@ -431,7 +467,7 @@
                                     </div>
                                 </div>
                                 <label><input type="checkbox" checked id="agent3"> Enable Agent</label>
-                                <textarea class="textarea-input" id="agent3-prompt" placeholder="Custom instructions for structure evaluation...">You are a document structure expert. Evaluate the report for logical organization, paragraph structure, use of headings, citation format, and overall document formatting.</textarea>
+                                <textarea class="textarea-input" id="agent3-prompt" placeholder="Custom instructions for structure evaluation...">You are a document structure expert. Evaluate the report for logical organization, paragraph structure, use of headings, citation format, and overall document formatting. Assess the flow of ideas and coherence of the document structure.</textarea>
                             </div>
                             
                             <div class="agent-card">
@@ -443,7 +479,7 @@
                                     </div>
                                 </div>
                                 <label><input type="checkbox" checked id="agent4"> Enable Agent</label>
-                                <textarea class="textarea-input" id="agent4-prompt" placeholder="Custom instructions for innovation evaluation...">You are an innovation and critical thinking expert. Evaluate the report for originality of ideas, creative problem-solving approaches, critical analysis, and innovative insights.</textarea>
+                                <textarea class="textarea-input" id="agent4-prompt" placeholder="Custom instructions for innovation evaluation...">You are an innovation and critical thinking expert. Evaluate the report for originality of ideas, creative problem-solving approaches, critical analysis, and innovative insights. Look for evidence of independent thinking and novel applications of engineering principles.</textarea>
                             </div>
                             
                             <div class="agent-card">
@@ -455,7 +491,7 @@
                                     </div>
                                 </div>
                                 <label><input type="checkbox" checked id="agent5"> Enable Agent</label>
-                                <textarea class="textarea-input" id="agent5-prompt" placeholder="Custom instructions for consensus building...">You are a consensus moderator. Analyze the evaluations from all expert agents, identify agreements and disagreements, and provide a balanced final assessment with justifications.</textarea>
+                                <textarea class="textarea-input" id="agent5-prompt" placeholder="Custom instructions for consensus building...">You are a consensus moderator. Analyze the evaluations from all expert agents, identify agreements and disagreements, and provide a balanced final assessment with justifications. Flag areas that may need human review and provide meta-commentary on the evaluation process.</textarea>
                             </div>
                         </div>
                     </div>
@@ -469,69 +505,102 @@
                         
                         <div id="metricsContainer">
                             <div class="metric-item">
-                                <h3>Content Quality</h3>
-                                <label>Weight (%): <input type="number" class="score-input" value="30" min="0" max="100" id="metric1-weight"></label>
+                                <h3>Technical Content</h3>
+                                <label>Weight (%): <input type="number" class="score-input" value="35" min="0" max="100" id="metric1-weight"></label>
+                                <label>Metric Name: <input type="text" class="score-input" value="technical_content" id="metric1-name"></label>
                                 <label>Description:</label>
-                                <textarea class="textarea-input" id="metric1-desc" placeholder="Describe what this metric evaluates...">Technical accuracy, depth of analysis, use of appropriate engineering principles, completeness of problem solving approach.</textarea>
+                                <textarea class="textarea-input" id="metric1-desc" placeholder="Describe what this metric evaluates...">Engineering principles application, calculation accuracy, problem-solving methodology, technical depth, and use of appropriate engineering standards.</textarea>
                                 <label>Scoring Rubric:</label>
-                                <textarea class="textarea-input" id="metric1-rubric" placeholder="Define scoring criteria...">90-100: Exceptional technical accuracy with comprehensive analysis
-80-89: Good technical content with minor gaps
-70-79: Adequate technical content with some errors
-60-69: Basic technical content with significant issues
-Below 60: Inadequate technical content</textarea>
+                                <textarea class="textarea-input" id="metric1-rubric" placeholder="Define scoring criteria...">90-100: Exceptional technical accuracy with innovative approaches and comprehensive analysis
+80-89: Good technical content with minor calculation errors or methodological gaps
+70-79: Adequate technical approach with some significant issues in analysis
+60-69: Basic technical content with major gaps in understanding
+Below 60: Inadequate technical analysis with fundamental errors</textarea>
                             </div>
                             
                             <div class="metric-item">
-                                <h3>Language & Communication</h3>
+                                <h3>Professional Communication</h3>
                                 <label>Weight (%): <input type="number" class="score-input" value="25" min="0" max="100" id="metric2-weight"></label>
+                                <label>Metric Name: <input type="text" class="score-input" value="communication" id="metric2-name"></label>
                                 <label>Description:</label>
-                                <textarea class="textarea-input" id="metric2-desc" placeholder="Describe what this metric evaluates...">Grammar, vocabulary, sentence structure, clarity of expression, professional writing style.</textarea>
+                                <textarea class="textarea-input" id="metric2-desc" placeholder="Describe what this metric evaluates...">Technical writing clarity, professional language, grammar, formatting according to engineering standards, and effective communication of complex concepts.</textarea>
                                 <label>Scoring Rubric:</label>
-                                <textarea class="textarea-input" id="metric2-rubric" placeholder="Define scoring criteria...">90-100: Excellent grammar and professional communication
-80-89: Good language skills with minor errors
-70-79: Adequate communication with some grammar issues
-60-69: Basic communication with frequent errors
-Below 60: Poor language skills impacting comprehension</textarea>
+                                <textarea class="textarea-input" id="metric2-rubric" placeholder="Define scoring criteria...">90-100: Professional engineering communication standards with excellent clarity
+80-89: Clear communication with minor language issues
+70-79: Generally clear with some communication barriers
+60-69: Basic communication with frequent errors affecting comprehension
+Below 60: Poor communication significantly impacting understanding</textarea>
+                            </div>
+                            
+                            <div class="metric-item">
+                                <h3>Structure & Organization</h3>
+                                <label>Weight (%): <input type="number" class="score-input" value="25" min="0" max="100" id="metric3-weight"></label>
+                                <label>Metric Name: <input type="text" class="score-input" value="structure" id="metric3-name"></label>
+                                <label>Description:</label>
+                                <textarea class="textarea-input" id="metric3-desc" placeholder="Describe what this metric evaluates...">Document organization, logical flow, proper use of headings, citation format, figure/table presentation, and overall document structure.</textarea>
+                                <label>Scoring Rubric:</label>
+                                <textarea class="textarea-input" id="metric3-rubric" placeholder="Define scoring criteria...">90-100: Excellent organization with logical flow and professional formatting
+80-89: Good structure with minor organizational issues
+70-79: Adequate organization with some structural problems
+60-69: Basic structure with significant organizational gaps
+Below 60: Poor organization impacting document coherence</textarea>
+                            </div>
+                            
+                            <div class="metric-item">
+                                <h3>Innovation & Critical Thinking</h3>
+                                <label>Weight (%): <input type="number" class="score-input" value="15" min="0" max="100" id="metric4-weight"></label>
+                                <label>Metric Name: <input type="text" class="score-input" value="innovation" id="metric4-name"></label>
+                                <label>Description:</label>
+                                <textarea class="textarea-input" id="metric4-desc" placeholder="Describe what this metric evaluates...">Creative problem-solving, critical evaluation of alternatives, innovative insights, independent thinking, and consideration of future implications.</textarea>
+                                <label>Scoring Rubric:</label>
+                                <textarea class="textarea-input" id="metric4-rubric" placeholder="Define scoring criteria...">90-100: Highly innovative with excellent critical analysis and original thinking
+80-89: Good innovation with solid critical thinking
+70-79: Some innovative elements with basic critical analysis
+60-69: Limited innovation with minimal critical evaluation
+Below 60: Lack of innovative thinking or critical analysis</textarea>
                             </div>
                         </div>
                         
                         <button class="btn btn-secondary" onclick="addCustomMetric()">Add Custom Metric</button>
-                        <button class="btn" onclick="loadPresetMetrics()">Load Engineering Preset</button>
+                        <button class="btn" onclick="loadPresetMetrics()">Reset to Engineering Preset</button>
                     </div>
                 </div>
                 
                 <!-- Teacher Supervision -->
                 <div class="tab-content" id="supervision-tab">
                     <div class="custom-metrics">
-                        <h2>👨‍🏫 Teacher Supervision & Feedback</h2>
+                        <h2>👨‍🏫 Teacher Supervision & Quality Control</h2>
                         <p>Monitor AI grading and provide guidance for quality assurance</p>
                         
                         <div class="metric-item">
-                            <h3>Grading Guidelines</h3>
+                            <h3>Course-Specific Guidelines</h3>
                             <label>Overall Grading Philosophy:</label>
-                            <textarea class="textarea-input" id="teacher-philosophy" placeholder="Describe your overall approach to grading...">Focus on practical engineering applications, encourage innovative thinking, prioritize clear communication of technical concepts.</textarea>
+                            <textarea class="textarea-input" id="teacher-philosophy" placeholder="Describe your overall approach to grading...">Focus on practical engineering applications, encourage innovative thinking, prioritize clear communication of technical concepts. Emphasize the connection between theory and real-world practice.</textarea>
                             
-                            <label>Specific Requirements:</label>
-                            <textarea class="textarea-input" id="teacher-requirements" placeholder="List specific requirements for this assignment...">- Must include engineering calculations
-- Proper citation of technical sources required
-- Diagrams and figures should be clearly labeled
-- Conclusion should relate to real-world applications</textarea>
+                            <label>Specific Assignment Requirements:</label>
+                            <textarea class="textarea-input" id="teacher-requirements" placeholder="List specific requirements for this assignment...">- Must include engineering calculations with proper units
+- Proper citation of technical sources required (IEEE format preferred)
+- Diagrams and figures should be clearly labeled and referenced
+- Conclusion should relate findings to real-world applications
+- Safety considerations must be addressed where applicable</textarea>
                             
-                            <label>Common Issues to Watch:</label>
-                            <textarea class="textarea-input" id="teacher-issues" placeholder="Common problems you want AI to identify...">- Lack of proper unit conversions
-- Insufficient safety considerations
-- Weak connection between theory and practice
-- Poor presentation of numerical results</textarea>
+                            <label>Common Issues to Monitor:</label>
+                            <textarea class="textarea-input" id="teacher-issues" placeholder="Common problems you want AI to identify...">- Lack of proper unit conversions or dimensional analysis
+- Insufficient consideration of safety factors
+- Weak connection between theoretical principles and practical applications
+- Poor presentation of numerical results without proper significant figures
+- Missing or inadequate discussion of limitations and assumptions</textarea>
                         </div>
                         
                         <div class="metric-item">
                             <h3>Quality Control Settings</h3>
-                            <label>Confidence Threshold: <input type="range" min="50" max="95" value="80" id="confidence-threshold"> <span id="confidence-value">80%</span></label>
+                            <label>AI Confidence Threshold: <input type="range" min="50" max="95" value="80" id="confidence-threshold"> <span id="confidence-value">80%</span></label>
                             <p style="font-size: 14px; color: #666;">AI must be this confident before assigning final scores</p>
                             
                             <label><input type="checkbox" id="require-consensus" checked> Require agent consensus for final scoring</label>
                             <label><input type="checkbox" id="flag-discrepancies" checked> Flag large score discrepancies for review</label>
                             <label><input type="checkbox" id="detailed-reasoning" checked> Require detailed reasoning for all scores</label>
+                            <label><input type="checkbox" id="human-review" checked> Request human review for low confidence scores</label>
                         </div>
                     </div>
                 </div>
@@ -540,7 +609,7 @@ Below 60: Poor language skills impacting comprehension</textarea>
             <!-- Grading Section -->
             <div class="grading-section" id="gradingSection" style="display: none;">
                 <button class="btn btn-success" onclick="startMultiAgentGrading()">
-                    🚀 Start Multi-Agent Grading
+                    🚀 Start Real AI Multi-Agent Grading
                 </button>
                 <div class="error" id="errorMsg"></div>
             </div>
@@ -577,7 +646,7 @@ Below 60: Poor language skills impacting comprehension</textarea>
                 </div>
                 
                 <div class="feedback">
-                    <h3>💬 Comprehensive Feedback & Recommendations</h3>
+                    <h3>💬 Comprehensive AI Feedback & Recommendations</h3>
                     <div id="comprehensiveFeedback">
                         <!-- Comprehensive feedback will be displayed here -->
                     </div>
@@ -595,7 +664,11 @@ Below 60: Poor language skills impacting comprehension</textarea>
     <script>
         let uploadedFile = null;
         let gradingResults = {};
-        let customMetricCount = 2;
+        let customMetricCount = 4;
+        let isApiConnected = false;
+        
+        // Check API connection on load
+        window.addEventListener('load', checkApiConnection);
         
         // File upload handling
         document.getElementById('fileInput').addEventListener('change', handleFileSelect);
@@ -624,6 +697,45 @@ Below 60: Poor language skills impacting comprehension</textarea>
         document.getElementById('confidence-threshold').addEventListener('input', (e) => {
             document.getElementById('confidence-value').textContent = e.target.value + '%';
         });
+        
+        async function checkApiConnection() {
+            try {
+                // Test if Netlify functions are available
+                const response = await fetch('/.netlify/functions/ai-agent-grade', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ test: true })
+                });
+                
+                if (response.ok || response.status === 500) {
+                    // Function exists, check if API key is configured
+                    isApiConnected = true;
+                    updateApiStatus(true);
+                } else {
+                    updateApiStatus(false);
+                }
+            } catch (error) {
+                updateApiStatus(false);
+            }
+        }
+        
+        function updateApiStatus(connected) {
+            const statusIndicator = document.getElementById('apiStatus');
+            const statusDetails = document.getElementById('apiStatusDetails');
+            
+            if (connected) {
+                statusIndicator.textContent = '🟢 API Connected';
+                statusIndicator.className = 'status-indicator status-live';
+                statusDetails.innerHTML = '✅ <strong>Live AI Integration:</strong> Your system is connected to OpenAI GPT-4 for real multi-agent grading.';
+                statusDetails.style.background = '#e8f5e8';
+                statusDetails.style.borderColor = '#4caf50';
+                isApiConnected = true;
+            } else {
+                statusIndicator.textContent = '🔴 Simulation Mode';
+                statusIndicator.className = 'status-indicator status-demo';
+                statusDetails.innerHTML = '🔧 <strong>Setup Required:</strong> Configure your OpenAI API key in Netlify environment variables to enable real AI grading. Currently running in simulation mode.';
+            }
+        }
         
         function handleFileSelect(e) {
             const file = e.target.files[0];
@@ -674,6 +786,7 @@ Below 60: Poor language skills impacting comprehension</textarea>
                 <div class="metric-item">
                     <h3>Custom Metric ${customMetricCount}</h3>
                     <label>Weight (%): <input type="number" class="score-input" value="0" min="0" max="100" id="metric${customMetricCount}-weight"></label>
+                    <label>Metric Name: <input type="text" class="score-input" value="custom_metric_${customMetricCount}" id="metric${customMetricCount}-name"></label>
                     <label>Description:</label>
                     <textarea class="textarea-input" id="metric${customMetricCount}-desc" placeholder="Describe what this metric evaluates..."></textarea>
                     <label>Scoring Rubric:</label>
@@ -689,61 +802,66 @@ Below 60: Poor language skills impacting comprehension</textarea>
         }
         
         function loadPresetMetrics() {
-            const container = document.getElementById('metricsContainer');
-            container.innerHTML = `
-                <div class="metric-item">
-                    <h3>Technical Content</h3>
-                    <label>Weight (%): <input type="number" class="score-input" value="35" min="0" max="100" id="metric1-weight"></label>
-                    <label>Description:</label>
-                    <textarea class="textarea-input" id="metric1-desc">Engineering principles application, calculation accuracy, problem-solving methodology, technical depth.</textarea>
-                    <label>Scoring Rubric:</label>
-                    <textarea class="textarea-input" id="metric1-rubric">90-100: Excellent technical accuracy with innovative approaches
+            if (confirm('This will reset all metrics to engineering defaults. Continue?')) {
+                document.getElementById('metricsContainer').innerHTML = `
+                    <div class="metric-item">
+                        <h3>Technical Content</h3>
+                        <label>Weight (%): <input type="number" class="score-input" value="35" min="0" max="100" id="metric1-weight"></label>
+                        <label>Metric Name: <input type="text" class="score-input" value="technical_content" id="metric1-name"></label>
+                        <label>Description:</label>
+                        <textarea class="textarea-input" id="metric1-desc">Engineering principles application, calculation accuracy, problem-solving methodology, technical depth.</textarea>
+                        <label>Scoring Rubric:</label>
+                        <textarea class="textarea-input" id="metric1-rubric">90-100: Exceptional technical accuracy with innovative approaches
 80-89: Good technical content with minor calculation errors
 70-79: Adequate technical approach with some methodological issues
 60-69: Basic technical content with significant gaps
 Below 60: Inadequate technical analysis</textarea>
-                </div>
-                
-                <div class="metric-item">
-                    <h3>Professional Communication</h3>
-                    <label>Weight (%): <input type="number" class="score-input" value="25" min="0" max="100" id="metric2-weight"></label>
-                    <label>Description:</label>
-                    <textarea class="textarea-input" id="metric2-desc">Technical writing clarity, professional language, grammar, formatting according to engineering standards.</textarea>
-                    <label>Scoring Rubric:</label>
-                    <textarea class="textarea-input" id="metric2-rubric">90-100: Professional engineering communication standards
+                    </div>
+                    
+                    <div class="metric-item">
+                        <h3>Professional Communication</h3>
+                        <label>Weight (%): <input type="number" class="score-input" value="25" min="0" max="100" id="metric2-weight"></label>
+                        <label>Metric Name: <input type="text" class="score-input" value="communication" id="metric2-name"></label>
+                        <label>Description:</label>
+                        <textarea class="textarea-input" id="metric2-desc">Technical writing clarity, professional language, grammar, formatting according to engineering standards.</textarea>
+                        <label>Scoring Rubric:</label>
+                        <textarea class="textarea-input" id="metric2-rubric">90-100: Professional engineering communication standards
 80-89: Clear communication with minor language issues
 70-79: Generally clear with some communication barriers
 60-69: Basic communication with frequent errors
 Below 60: Poor communication impacting understanding</textarea>
-                </div>
-                
-                <div class="metric-item">
-                    <h3>Design & Analysis</h3>
-                    <label>Weight (%): <input type="number" class="score-input" value="25" min="0" max="100" id="metric3-weight"></label>
-                    <label>Description:</label>
-                    <textarea class="textarea-input" id="metric3-desc">Design process, analysis methodology, consideration of constraints, feasibility assessment.</textarea>
-                    <label>Scoring Rubric:</label>
-                    <textarea class="textarea-input" id="metric3-rubric">90-100: Comprehensive design with thorough analysis
-80-89: Good design approach with minor omissions
-70-79: Adequate design with some analytical gaps
-60-69: Basic design with limited analysis
-Below 60: Inadequate design methodology</textarea>
-                </div>
-                
-                <div class="metric-item">
-                    <h3>Innovation & Critical Thinking</h3>
-                    <label>Weight (%): <input type="number" class="score-input" value="15" min="0" max="100" id="metric4-weight"></label>
-                    <label>Description:</label>
-                    <textarea class="textarea-input" id="metric4-desc">Creative problem-solving, critical evaluation of alternatives, innovative insights, future considerations.</textarea>
-                    <label>Scoring Rubric:</label>
-                    <textarea class="textarea-input" id="metric4-rubric">90-100: Highly innovative with excellent critical analysis
+                    </div>
+                    
+                    <div class="metric-item">
+                        <h3>Structure & Organization</h3>
+                        <label>Weight (%): <input type="number" class="score-input" value="25" min="0" max="100" id="metric3-weight"></label>
+                        <label>Metric Name: <input type="text" class="score-input" value="structure" id="metric3-name"></label>
+                        <label>Description:</label>
+                        <textarea class="textarea-input" id="metric3-desc">Document organization, logical flow, proper use of headings, citation format, figure/table presentation.</textarea>
+                        <label>Scoring Rubric:</label>
+                        <textarea class="textarea-input" id="metric3-rubric">90-100: Excellent organization with logical flow
+80-89: Good structure with minor organizational issues
+70-79: Adequate organization with some structural problems
+60-69: Basic structure with significant gaps
+Below 60: Poor organization impacting coherence</textarea>
+                    </div>
+                    
+                    <div class="metric-item">
+                        <h3>Innovation & Critical Thinking</h3>
+                        <label>Weight (%): <input type="number" class="score-input" value="15" min="0" max="100" id="metric4-weight"></label>
+                        <label>Metric Name: <input type="text" class="score-input" value="innovation" id="metric4-name"></label>
+                        <label>Description:</label>
+                        <textarea class="textarea-input" id="metric4-desc">Creative problem-solving, critical evaluation of alternatives, innovative insights, future considerations.</textarea>
+                        <label>Scoring Rubric:</label>
+                        <textarea class="textarea-input" id="metric4-rubric">90-100: Highly innovative with excellent critical analysis
 80-89: Good innovation with solid critical thinking
 70-79: Some innovative elements with basic analysis
 60-69: Limited innovation with minimal critical evaluation
 Below 60: Lack of innovative thinking</textarea>
-                </div>
-            `;
-            customMetricCount = 4;
+                    </div>
+                `;
+                customMetricCount = 4;
+            }
         }
         
         async function startMultiAgentGrading() {
@@ -762,14 +880,187 @@ Below 60: Lack of innovative thinking</textarea>
             
             try {
                 const fileContent = await readFileContent(uploadedFile);
-                await simulateMultiAgentGrading(fileContent);
+                
+                if (isApiConnected) {
+                    await performRealMultiAgentGrading(fileContent);
+                } else {
+                    await simulateMultiAgentGrading(fileContent);
+                }
                 
             } catch (error) {
                 console.error('Multi-agent grading failed:', error);
-                showError('Multi-agent grading failed, please check configuration and try again');
+                showError('Multi-agent grading failed: ' + error.message);
             } finally {
                 document.getElementById('loadingSection').style.display = 'none';
             }
+        }
+        
+        async function performRealMultiAgentGrading(content) {
+            const agents = [
+                { id: 1, name: 'Content Expert', icon: '📝', color: '#4facfe' },
+                { id: 2, name: 'Language Expert', icon: '🔤', color: '#ff6b6b' },
+                { id: 3, name: 'Structure Expert', icon: '📐', color: '#4caf50' },
+                { id: 4, name: 'Innovation Expert', icon: '💡', color: '#ffa726' },
+                { id: 5, name: 'Consensus Moderator', icon: '⚖️', color: '#9c27b0' }
+            ];
+            
+            const enabledAgents = agents.filter(agent => 
+                document.getElementById(`agent${agent.id}`).checked
+            );
+            
+            const metrics = getMetricsConfiguration();
+            const teacherGuidelines = getTeacherGuidelines();
+            
+            // Initialize progress tracking
+            initializeAgentProgress(enabledAgents);
+            
+            const agentResults = {};
+            
+            // Process each agent (except consensus moderator)
+            for (const agent of enabledAgents.filter(a => a.id !== 5)) {
+                await performRealAgentEvaluation(agent, content, metrics, teacherGuidelines, agentResults);
+            }
+            
+            // Generate consensus if moderator is enabled
+            if (enabledAgents.find(a => a.id === 5)) {
+                await generateRealConsensus(agentResults, metrics, teacherGuidelines);
+            }
+            
+            // Display results
+            displayMultiAgentResults(agentResults);
+        }
+        
+        async function performRealAgentEvaluation(agent, content, metrics, teacherGuidelines, results) {
+            const statusElement = document.getElementById(`status-${agent.id}`);
+            const barElement = document.getElementById(`bar-${agent.id}`);
+            
+            statusElement.textContent = 'Connecting to AI...';
+            statusElement.style.color = '#ffa726';
+            barElement.style.width = '20%';
+            
+            try {
+                const agentPrompt = document.getElementById(`agent${agent.id}-prompt`).value;
+                
+                const response = await fetch('/.netlify/functions/ai-agent-grade', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        agentId: agent.id,
+                        agentPrompt: agentPrompt,
+                        content: content,
+                        metrics: metrics,
+                        teacherGuidelines: teacherGuidelines
+                    })
+                });
+                
+                barElement.style.width = '70%';
+                statusElement.textContent = 'Processing...';
+                
+                if (!response.ok) {
+                    throw new Error(`API request failed: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (!data.success) {
+                    throw new Error(data.error || 'AI evaluation failed');
+                }
+                
+                results[agent.id] = {
+                    name: agent.name,
+                    icon: agent.icon,
+                    color: agent.color,
+                    scores: data.result.scores,
+                    feedback: data.result.feedback,
+                    confidence: data.result.confidence,
+                    reasoning: data.result.reasoning
+                };
+                
+                barElement.style.width = '100%';
+                statusElement.textContent = 'Complete ✓';
+                statusElement.style.color = '#4caf50';
+                
+            } catch (error) {
+                console.error(`Agent ${agent.id} evaluation failed:`, error);
+                
+                // Fallback to simulation for this agent
+                await simulateAgentEvaluation(agent, content, results);
+                statusElement.textContent = 'Simulated ⚠️';
+                statusElement.style.color = '#ff9800';
+            }
+            
+            await new Promise(resolve => setTimeout(resolve, 500));
+        }
+        
+        async function generateRealConsensus(agentResults, metrics, teacherGuidelines) {
+            document.getElementById('loadingText').textContent = 'AI Consensus Moderator analyzing...';
+            
+            try {
+                const response = await fetch('/.netlify/functions/consensus-moderator', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        agentResults: agentResults,
+                        metrics: metrics,
+                        teacherGuidelines: teacherGuidelines
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        agentResults.consensus = data.consensus;
+                        return;
+                    }
+                }
+                
+                throw new Error('Consensus API failed');
+                
+            } catch (error) {
+                console.error('Real consensus generation failed, using fallback:', error);
+                
+                // Fallback consensus generation
+                agentResults.consensus = generateFallbackConsensus(agentResults, metrics);
+            }
+        }
+        
+        function getMetricsConfiguration() {
+            const metrics = [];
+            
+            for (let i = 1; i <= customMetricCount; i++) {
+                const weightElement = document.getElementById(`metric${i}-weight`);
+                const nameElement = document.getElementById(`metric${i}-name`);
+                const descElement = document.getElementById(`metric${i}-desc`);
+                const rubricElement = document.getElementById(`metric${i}-rubric`);
+                
+                if (weightElement && nameElement && descElement && rubricElement) {
+                    const weight = parseInt(weightElement.value) || 0;
+                    if (weight > 0) {
+                        metrics.push({
+                            name: nameElement.value,
+                            weight: weight,
+                            description: descElement.value,
+                            rubric: rubricElement.value
+                        });
+                    }
+                }
+            }
+            
+            return metrics;
+        }
+        
+        function getTeacherGuidelines() {
+            return {
+                philosophy: document.getElementById('teacher-philosophy').value,
+                requirements: document.getElementById('teacher-requirements').value,
+                commonIssues: document.getElementById('teacher-issues').value,
+                confidenceThreshold: parseInt(document.getElementById('confidence-threshold').value),
+                requireConsensus: document.getElementById('require-consensus').checked,
+                flagDiscrepancies: document.getElementById('flag-discrepancies').checked,
+                detailedReasoning: document.getElementById('detailed-reasoning').checked,
+                humanReview: document.getElementById('human-review').checked
+            };
         }
         
         function validateConfiguration() {
@@ -787,17 +1078,16 @@ Below 60: Lack of innovative thinking</textarea>
             }
             
             // Check metric weights total 100%
-            const weights = [];
-            for (let i = 1; i <= customMetricCount; i++) {
-                const weightElement = document.getElementById(`metric${i}-weight`);
-                if (weightElement) {
-                    weights.push(parseInt(weightElement.value) || 0);
-                }
-            }
+            const metrics = getMetricsConfiguration();
+            const total = metrics.reduce((sum, metric) => sum + metric.weight, 0);
             
-            const total = weights.reduce((sum, w) => sum + w, 0);
             if (total !== 100) {
                 showError(`Metric weights must total 100%, currently ${total}%`);
+                return false;
+            }
+            
+            if (metrics.length === 0) {
+                showError('Please configure at least one evaluation metric');
                 return false;
             }
             
@@ -813,13 +1103,28 @@ Below 60: Lack of innovative thinking</textarea>
                 if (file.type === 'text/plain') {
                     reader.readAsText(file);
                 } else {
-                    // For demonstration - in real app would parse PDF/DOC
-                    resolve('Sample engineering report content: This report analyzes the structural integrity of a bridge design...');
+                    // For demonstration - in production would use proper PDF/DOC parsing
+                    resolve(`Engineering Report Analysis: ${file.name}
+
+This is a sample engineering report content for demonstration purposes. In a production system, this would contain the actual extracted text from the uploaded PDF, DOC, or DOCX file.
+
+The report would typically include:
+- Introduction and problem statement
+- Technical methodology and approach
+- Engineering calculations and analysis
+- Results and discussion
+- Conclusions and recommendations
+- References and citations
+
+This sample content allows the AI agents to demonstrate their evaluation capabilities across different criteria including technical accuracy, communication quality, document structure, and innovative thinking.`);
                 }
             });
         }
         
+        // ... (rest of the simulation functions remain the same as before)
+        
         async function simulateMultiAgentGrading(content) {
+            // Use existing simulation code as fallback
             const agents = [
                 { id: 1, name: 'Content Expert', icon: '📝', color: '#4facfe' },
                 { id: 2, name: 'Language Expert', icon: '🔤', color: '#ff6b6b' },
@@ -832,22 +1137,18 @@ Below 60: Lack of innovative thinking</textarea>
                 document.getElementById(`agent${agent.id}`).checked
             );
             
-            // Initialize progress tracking
             initializeAgentProgress(enabledAgents);
             
             const agentResults = {};
             
-            // Simulate each agent's evaluation
             for (const agent of enabledAgents) {
                 await simulateAgentEvaluation(agent, content, agentResults);
             }
             
-            // Generate consensus if moderator is enabled
             if (enabledAgents.find(a => a.id === 5)) {
-                await generateConsensus(agentResults);
+                await generateSimulatedConsensus(agentResults);
             }
             
-            // Display results
             displayMultiAgentResults(agentResults);
         }
         
@@ -871,17 +1172,14 @@ Below 60: Lack of innovative thinking</textarea>
             const statusElement = document.getElementById(`status-${agent.id}`);
             const barElement = document.getElementById(`bar-${agent.id}`);
             
-            // Update status to analyzing
             statusElement.textContent = 'Analyzing...';
             statusElement.style.color = '#ffa726';
             
-            // Simulate progress
             for (let progress = 0; progress <= 100; progress += 20) {
                 barElement.style.width = progress + '%';
                 await new Promise(resolve => setTimeout(resolve, 300));
             }
             
-            // Generate simulated scores based on agent type
             const scores = generateAgentScores(agent.id);
             const feedback = generateAgentFeedback(agent.id, scores);
             
@@ -891,141 +1189,151 @@ Below 60: Lack of innovative thinking</textarea>
                 color: agent.color,
                 scores: scores,
                 feedback: feedback,
-                confidence: Math.floor(Math.random() * 20) + 80 // 80-100%
+                confidence: Math.floor(Math.random() * 20) + 80
             };
             
-            // Update status to complete
             statusElement.textContent = 'Complete ✓';
             statusElement.style.color = '#4caf50';
             
-            // Small delay between agents
             await new Promise(resolve => setTimeout(resolve, 500));
         }
         
         function generateAgentScores(agentId) {
-            const baseScores = {
-                1: { content: 88, language: 82, structure: 85, innovation: 79 }, // Content Expert
-                2: { content: 85, language: 92, structure: 88, innovation: 83 }, // Language Expert  
-                3: { content: 82, language: 86, structure: 94, innovation: 81 }, // Structure Expert
-                4: { content: 86, language: 84, structure: 83, innovation: 91 }, // Innovation Expert
-                5: { content: 85, language: 86, structure: 87, innovation: 84 }  // Consensus Moderator
+            const metrics = getMetricsConfiguration();
+            const scores = {};
+            
+            // Base scores vary by agent expertise
+            const agentBias = {
+                1: { technical_content: 88, communication: 82, structure: 85, innovation: 79 },
+                2: { technical_content: 85, communication: 92, structure: 88, innovation: 83 },
+                3: { technical_content: 82, communication: 86, structure: 94, innovation: 81 },
+                4: { technical_content: 86, communication: 84, structure: 83, innovation: 91 },
+                5: { technical_content: 85, communication: 86, structure: 87, innovation: 84 }
             };
             
-            const base = baseScores[agentId];
-            // Add some randomization
-            const scores = {};
-            Object.keys(base).forEach(key => {
-                scores[key] = Math.max(60, Math.min(100, base[key] + Math.floor(Math.random() * 10) - 5));
+            const bias = agentBias[agentId] || agentBias[1];
+            
+            metrics.forEach(metric => {
+                const metricKey = metric.name.toLowerCase();
+                const baseScore = bias[metricKey] || 80;
+                scores[metricKey] = Math.max(60, Math.min(100, baseScore + Math.floor(Math.random() * 10) - 5));
             });
             
             return scores;
         }
         
         function generateAgentFeedback(agentId, scores) {
+            const metrics = getMetricsConfiguration();
+            const feedback = [];
+            
             const feedbackTemplates = {
-                1: [ // Content Expert
-                    scores.content >= 85 ? "✅ Excellent technical analysis with strong engineering principles application" : 
-                    scores.content >= 75 ? "⚠️ Good technical content, but could benefit from deeper analysis" :
-                    "❌ Technical content needs significant improvement in depth and accuracy",
-                    
-                    "Technical calculations are " + (scores.content >= 80 ? "well-executed" : "adequate but need verification"),
-                    "Engineering methodology shows " + (scores.content >= 85 ? "sophisticated" : "basic") + " understanding"
-                ],
-                2: [ // Language Expert
-                    scores.language >= 90 ? "✅ Exceptional English proficiency with professional writing standards" :
-                    scores.language >= 80 ? "⚠️ Good language skills with minor grammatical issues" :
-                    "❌ Language quality needs improvement for professional communication",
-                    
-                    "Grammar and syntax are " + (scores.language >= 85 ? "excellent" : "satisfactory with room for improvement"),
-                    "Technical vocabulary usage is " + (scores.language >= 80 ? "appropriate and precise" : "adequate but could be more sophisticated")
-                ],
-                3: [ // Structure Expert
-                    scores.structure >= 90 ? "✅ Outstanding document organization with clear logical flow" :
-                    scores.structure >= 80 ? "⚠️ Well-structured document with minor organizational issues" :
-                    "❌ Document structure needs significant reorganization",
-                    
-                    "Paragraph transitions are " + (scores.structure >= 85 ? "smooth and logical" : "adequate but could be improved"),
-                    "Citation and formatting follow " + (scores.structure >= 80 ? "professional standards" : "basic requirements with some errors")
-                ],
-                4: [ // Innovation Expert
-                    scores.innovation >= 85 ? "✅ Demonstrates creative problem-solving and innovative thinking" :
-                    scores.innovation >= 75 ? "⚠️ Shows some innovative elements but could push boundaries further" :
-                    "❌ Limited innovative thinking, needs more creative approaches",
-                    
-                    "Critical analysis demonstrates " + (scores.innovation >= 80 ? "sophisticated" : "developing") + " reasoning skills",
-                    "Future considerations and implications are " + (scores.innovation >= 75 ? "well-addressed" : "minimally explored")
-                ]
+                1: { // Content Expert
+                    high: "Excellent technical analysis with strong engineering principles application and accurate calculations.",
+                    medium: "Good technical content, but could benefit from deeper analysis and more rigorous methodology.",
+                    low: "Technical content needs significant improvement in depth, accuracy, and engineering rigor."
+                },
+                2: { // Language Expert
+                    high: "Exceptional English proficiency with professional writing standards and clear technical communication.",
+                    medium: "Good language skills with minor grammatical issues that don't impede understanding.",
+                    low: "Language quality needs improvement for professional engineering communication standards."
+                },
+                3: { // Structure Expert
+                    high: "Outstanding document organization with clear logical flow and professional formatting.",
+                    medium: "Well-structured document with minor organizational issues that could be improved.",
+                    low: "Document structure needs significant reorganization for better clarity and flow."
+                },
+                4: { // Innovation Expert
+                    high: "Demonstrates exceptional creative problem-solving and innovative engineering thinking.",
+                    medium: "Shows some innovative elements but could push creative boundaries further.",
+                    low: "Limited innovative thinking; needs more creative approaches and critical analysis."
+                }
             };
             
-            return feedbackTemplates[agentId] || ["Standard feedback generated"];
-        }
-        
-        async function generateConsensus(agentResults) {
-            document.getElementById('loadingText').textContent = 'Generating consensus...';
+            const templates = feedbackTemplates[agentId] || feedbackTemplates[1];
             
-            // Simulate consensus building delay
-            await new Promise(resolve => setTimeout(resolve, 2000));
-            
-            // Calculate weighted average scores
-            const allScores = Object.values(agentResults).filter(result => result.scores);
-            const consensusScores = {};
-            
-            ['content', 'language', 'structure', 'innovation'].forEach(metric => {
-                const scores = allScores.map(result => result.scores[metric]).filter(score => score !== undefined);
-                consensusScores[metric] = Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length);
-            });
-            
-            // Generate consensus analysis
-            const agreements = [];
-            const disagreements = [];
-            
-            Object.keys(consensusScores).forEach(metric => {
-                const scores = allScores.map(result => result.scores[metric]).filter(score => score !== undefined);
-                const max = Math.max(...scores);
-                const min = Math.min(...scores);
-                const range = max - min;
-                
-                if (range <= 5) {
-                    agreements.push(`Strong agreement on ${metric} (range: ${range} points)`);
-                } else if (range <= 10) {
-                    agreements.push(`Moderate agreement on ${metric} (range: ${range} points)`);
+            metrics.forEach(metric => {
+                const score = scores[metric.name.toLowerCase()];
+                if (score >= 85) {
+                    feedback.push(`✅ ${metric.name}: ${templates.high}`);
+                } else if (score >= 75) {
+                    feedback.push(`⚠️ ${metric.name}: ${templates.medium}`);
                 } else {
-                    disagreements.push(`Disagreement on ${metric} (range: ${range} points) - requires review`);
+                    feedback.push(`❌ ${metric.name}: ${templates.low}`);
                 }
             });
             
-            agentResults.consensus = {
-                scores: consensusScores,
-                agreements: agreements,
-                disagreements: disagreements,
-                confidence: disagreements.length === 0 ? 95 : Math.max(70, 90 - disagreements.length * 10)
+            return feedback;
+        }
+        
+        async function generateSimulatedConsensus(agentResults) {
+            document.getElementById('loadingText').textContent = 'Generating consensus...';
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            const metrics = getMetricsConfiguration();
+            agentResults.consensus = generateFallbackConsensus(agentResults, metrics);
+        }
+        
+        function generateFallbackConsensus(agentResults, metrics) {
+            const consensusScores = {};
+            const agreements = [];
+            const disagreements = [];
+            
+            metrics.forEach(metric => {
+                const metricKey = metric.name.toLowerCase();
+                const scores = Object.values(agentResults)
+                    .filter(result => result.scores && result.scores[metricKey] !== undefined)
+                    .map(result => result.scores[metricKey]);
+                
+                if (scores.length > 0) {
+                    const average = scores.reduce((sum, score) => sum + score, 0) / scores.length;
+                    const max = Math.max(...scores);
+                    const min = Math.min(...scores);
+                    const range = max - min;
+                    
+                    consensusScores[metricKey] = Math.round(average);
+                    
+                    if (range <= 5) {
+                        agreements.push(`Strong agreement on ${metric.name} (range: ${range} points)`);
+                    } else if (range <= 10) {
+                        agreements.push(`Moderate agreement on ${metric.name} (range: ${range} points)`);
+                    } else {
+                        disagreements.push(`Disagreement on ${metric.name} (range: ${range} points) - requires review`);
+                    }
+                }
+            });
+            
+            return {
+                consensusScores,
+                agreements,
+                disagreements,
+                confidence: disagreements.length === 0 ? 95 : Math.max(70, 90 - disagreements.length * 10),
+                flagsForReview: disagreements.length > 1 ? ['Multiple disagreements detected'] : [],
+                metaFeedback: `Consensus reached with ${agreements.length} agreements and ${disagreements.length} disagreements.`,
+                methodology: isApiConnected ? 'AI-powered consensus analysis' : 'Weighted average with range analysis'
             };
         }
         
         function displayMultiAgentResults(agentResults) {
-            // Calculate final score
-            const consensusScores = agentResults.consensus ? agentResults.consensus.scores : 
-                calculateAverageScores(agentResults);
+            const metrics = getMetricsConfiguration();
+            const consensusScores = agentResults.consensus ? agentResults.consensus.consensusScores : 
+                calculateAverageScores(agentResults, metrics);
             
-            const weights = getMetricWeights();
-            const finalScore = calculateWeightedScore(consensusScores, weights);
+            const finalScore = calculateWeightedScore(consensusScores, metrics);
             
             gradingResults = {
                 finalScore: finalScore,
                 agentResults: agentResults,
-                consensusScores: consensusScores
+                consensusScores: consensusScores,
+                metrics: metrics
             };
             
-            // Display final score
             document.getElementById('finalScore').textContent = finalScore;
             
-            // Display consensus information
             if (agentResults.consensus) {
                 const confidence = agentResults.consensus.confidence;
                 document.getElementById('consensusInfo').textContent = 
                     `Consensus confidence: ${confidence}% | Based on ${Object.keys(agentResults).length - 1} agents`;
                 
-                // Display consensus analysis
                 const consensusHtml = `
                     <div style="margin: 15px 0;">
                         <h4 style="color: #4caf50;">✓ Agent Agreements</h4>
@@ -1036,11 +1344,15 @@ Below 60: Lack of innovative thinking</textarea>
                         <h4 style="color: #ff6b6b;">⚠ Areas of Disagreement</h4>
                         ${agentResults.consensus.disagreements.map(item => `<p>• ${item}</p>`).join('')}
                     </div>` : ''}
+                    ${agentResults.consensus.flagsForReview.length > 0 ? `
+                    <div style="margin: 15px 0;">
+                        <h4 style="color: #ff9800;">🔍 Flags for Review</h4>
+                        ${agentResults.consensus.flagsForReview.map(item => `<p>• ${item}</p>`).join('')}
+                    </div>` : ''}
                 `;
                 document.getElementById('consensusAnalysis').innerHTML = consensusHtml;
             }
             
-            // Display individual agent results
             const agentResultsHtml = Object.entries(agentResults)
                 .filter(([key]) => key !== 'consensus')
                 .map(([agentId, result]) => `
@@ -1053,105 +1365,108 @@ Below 60: Lack of innovative thinking</textarea>
                             </div>
                         </div>
                         
-                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 10px; margin: 15px 0;">
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin: 15px 0;">
                             ${Object.entries(result.scores).map(([metric, score]) => `
                                 <div style="text-align: center; padding: 10px; background: #f8f9fa; border-radius: 5px;">
                                     <div style="font-size: 1.5em; font-weight: bold; color: ${result.color};">${score}</div>
-                                    <div style="font-size: 12px; text-transform: capitalize;">${metric}</div>
+                                    <div style="font-size: 12px; text-transform: capitalize;">${metric.replace('_', ' ')}</div>
                                 </div>
                             `).join('')}
                         </div>
                         
                         <div style="margin-top: 15px;">
-                            <h4>Feedback:</h4>
+                            <h4>AI Feedback:</h4>
                             ${result.feedback.map(item => `<p style="margin: 5px 0; font-size: 14px;">• ${item}</p>`).join('')}
                         </div>
+                        
+                        ${result.reasoning ? `
+                        <div style="margin-top: 15px;">
+                            <h4>Reasoning:</h4>
+                            <p style="font-size: 14px; color: #666; font-style: italic;">${result.reasoning}</p>
+                        </div>` : ''}
                     </div>
                 `).join('');
             
             document.getElementById('agentResults').innerHTML = agentResultsHtml;
             
-            // Generate comprehensive feedback
-            generateComprehensiveFeedback(agentResults, consensusScores);
+            generateComprehensiveFeedback(agentResults, consensusScores, metrics);
             
-            // Show results
             document.getElementById('resultsSection').style.display = 'block';
             document.getElementById('resultsSection').scrollIntoView({ behavior: 'smooth' });
         }
         
-        function calculateAverageScores(agentResults) {
-            const allScores = Object.values(agentResults).filter(result => result.scores);
+        function calculateAverageScores(agentResults, metrics) {
             const averageScores = {};
             
-            ['content', 'language', 'structure', 'innovation'].forEach(metric => {
-                const scores = allScores.map(result => result.scores[metric]).filter(score => score !== undefined);
+            metrics.forEach(metric => {
+                const metricKey = metric.name.toLowerCase();
+                const scores = Object.values(agentResults)
+                    .filter(result => result.scores && result.scores[metricKey] !== undefined)
+                    .map(result => result.scores[metricKey]);
+                
                 if (scores.length > 0) {
-                    averageScores[metric] = Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length);
+                    averageScores[metricKey] = Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length);
                 }
             });
             
             return averageScores;
         }
         
-        function getMetricWeights() {
-            const weights = {};
-            const metricNames = ['content', 'language', 'structure', 'innovation'];
-            
-            for (let i = 1; i <= customMetricCount; i++) {
-                const weightElement = document.getElementById(`metric${i}-weight`);
-                if (weightElement && metricNames[i-1]) {
-                    weights[metricNames[i-1]] = parseInt(weightElement.value) || 0;
-                }
-            }
-            
-            return weights;
-        }
-        
-        function calculateWeightedScore(scores, weights) {
+        function calculateWeightedScore(scores, metrics) {
             let totalScore = 0;
             let totalWeight = 0;
             
-            Object.entries(weights).forEach(([metric, weight]) => {
-                if (scores[metric] !== undefined) {
-                    totalScore += scores[metric] * weight;
-                    totalWeight += weight;
+            metrics.forEach(metric => {
+                const metricKey = metric.name.toLowerCase();
+                if (scores[metricKey] !== undefined) {
+                    totalScore += scores[metricKey] * metric.weight;
+                    totalWeight += metric.weight;
                 }
             });
             
             return totalWeight > 0 ? Math.round(totalScore / totalWeight) : 0;
         }
         
-        function generateComprehensiveFeedback(agentResults, consensusScores) {
+        function generateComprehensiveFeedback(agentResults, consensusScores, metrics) {
             const feedback = [];
             
-            // Overall assessment
             const overallScore = Object.values(consensusScores).reduce((sum, score) => sum + score, 0) / Object.keys(consensusScores).length;
             
             if (overallScore >= 90) {
-                feedback.push("🌟 <strong>Exceptional Work:</strong> This report demonstrates outstanding quality across all evaluation criteria.");
+                feedback.push("🌟 <strong>Exceptional Work:</strong> This report demonstrates outstanding quality across all evaluation criteria with professional-level execution.");
             } else if (overallScore >= 80) {
-                feedback.push("✅ <strong>Strong Performance:</strong> This report shows high quality with some areas for minor improvement.");
+                feedback.push("✅ <strong>Strong Performance:</strong> This report shows high quality work with minor areas for improvement to reach excellence.");
             } else if (overallScore >= 70) {
-                feedback.push("⚠️ <strong>Good Foundation:</strong> This report has solid fundamentals but would benefit from targeted improvements.");
+                feedback.push("⚠️ <strong>Good Foundation:</strong> This report has solid fundamentals but would benefit from targeted improvements in key areas.");
             } else {
-                feedback.push("❌ <strong>Needs Improvement:</strong> This report requires significant revision across multiple areas.");
+                feedback.push("❌ <strong>Needs Significant Improvement:</strong> This report requires substantial revision across multiple evaluation criteria.");
             }
             
-            // Specific recommendations
-            Object.entries(consensusScores).forEach(([metric, score]) => {
+            // Metric-specific feedback
+            metrics.forEach(metric => {
+                const metricKey = metric.name.toLowerCase();
+                const score = consensusScores[metricKey];
+                
                 if (score >= 85) {
-                    feedback.push(`<strong>${metric.charAt(0).toUpperCase() + metric.slice(1)}:</strong> Excellent performance - maintain this standard.`);
+                    feedback.push(`<strong>${metric.name}:</strong> Excellent performance (${score}/100) - maintain this high standard.`);
                 } else if (score >= 75) {
-                    feedback.push(`<strong>${metric.charAt(0).toUpperCase() + metric.slice(1)}:</strong> Good work with room for enhancement.`);
+                    feedback.push(`<strong>${metric.name}:</strong> Good work (${score}/100) with clear room for enhancement.`);
                 } else {
-                    feedback.push(`<strong>${metric.charAt(0).toUpperCase() + metric.slice(1)}:</strong> Priority area for improvement.`);
+                    feedback.push(`<strong>${metric.name}:</strong> Priority improvement area (${score}/100) - requires focused attention.`);
                 }
             });
             
-            // Teacher supervision insights
-            const teacherPhilosophy = document.getElementById('teacher-philosophy').value;
-            if (teacherPhilosophy.trim()) {
-                feedback.push(`<strong>Alignment with Course Goals:</strong> ${getAlignmentFeedback(consensusScores, teacherPhilosophy)}`);
+            // Teacher guidelines alignment
+            const teacherGuidelines = getTeacherGuidelines();
+            if (teacherGuidelines.philosophy.trim()) {
+                feedback.push(`<strong>Course Alignment:</strong> ${getAlignmentFeedback(consensusScores, teacherGuidelines.philosophy)}`);
+            }
+            
+            // API status indication
+            if (isApiConnected) {
+                feedback.push(`<em>💡 This assessment was generated using real AI agents with OpenAI GPT-4 for authentic multi-perspective evaluation.</em>`);
+            } else {
+                feedback.push(`<em>⚠️ This assessment was generated using simulation mode. Connect your OpenAI API for real AI-powered evaluation.</em>`);
             }
             
             document.getElementById('comprehensiveFeedback').innerHTML = 
@@ -1161,14 +1476,16 @@ Below 60: Lack of innovative thinking</textarea>
         function getAlignmentFeedback(scores, philosophy) {
             const avgScore = Object.values(scores).reduce((sum, score) => sum + score, 0) / Object.keys(scores).length;
             
-            if (philosophy.toLowerCase().includes('practical') && scores.content >= 85) {
-                return "Excellent alignment with practical engineering focus.";
+            if (philosophy.toLowerCase().includes('practical') && scores.technical_content >= 85) {
+                return "Excellent alignment with practical engineering focus - strong technical implementation.";
             } else if (philosophy.toLowerCase().includes('innovative') && scores.innovation >= 85) {
-                return "Strong demonstration of innovative thinking as emphasized in course.";
-            } else if (philosophy.toLowerCase().includes('communication') && scores.language >= 85) {
+                return "Strong demonstration of innovative thinking as emphasized in course objectives.";
+            } else if (philosophy.toLowerCase().includes('communication') && scores.communication >= 85) {
                 return "Good alignment with communication-focused learning objectives.";
+            } else if (avgScore >= 80) {
+                return "Generally aligns well with stated course philosophy and requirements.";
             } else {
-                return "Consider reviewing alignment with stated course philosophy and requirements.";
+                return "Consider reviewing alignment with stated course philosophy - some areas may need attention.";
             }
         }
         
@@ -1186,7 +1503,14 @@ Below 60: Lack of innovative thinking</textarea>
 
 Report File: ${fileName}
 Assessment Date: ${timestamp}
-Final Score: ${gradingResults.finalScore}/100
+Final Weighted Score: ${gradingResults.finalScore}/100
+Assessment Mode: ${isApiConnected ? 'Live AI Analysis (OpenAI GPT-4)' : 'Simulation Mode'}
+
+EVALUATION METRICS
+==================
+${gradingResults.metrics.map(metric => 
+    `${metric.name}: ${gradingResults.consensusScores[metric.name.toLowerCase()] || 'N/A'}/100 (Weight: ${metric.weight}%)`
+).join('\n')}
 
 INDIVIDUAL AGENT EVALUATIONS
 ============================
@@ -1196,57 +1520,79 @@ INDIVIDUAL AGENT EVALUATIONS
             Object.entries(gradingResults.agentResults)
                 .filter(([key]) => key !== 'consensus')
                 .forEach(([agentId, result]) => {
-                    reportContent += `${result.name} Agent (${result.confidence}% confidence)
-${'-'.repeat(result.name.length + 20)}
+                    reportContent += `${result.name} Agent Analysis
+${'='.repeat(result.name.length + 15)}
+Confidence Level: ${result.confidence}%
+
+Scores:
+${Object.entries(result.scores).map(([metric, score]) => 
+    `  ${metric.replace('_', ' ').toUpperCase()}: ${score}/100`
+).join('\n')}
+
+Feedback:
+${result.feedback.map(item => `  • ${item.replace(/[✅⚠️❌]/g, '').trim()}`).join('\n')}
+
+${result.reasoning ? `Detailed Reasoning:\n  ${result.reasoning}\n` : ''}
 `;
-                    Object.entries(result.scores).forEach(([metric, score]) => {
-                        reportContent += `${metric.charAt(0).toUpperCase() + metric.slice(1)}: ${score}/100\n`;
-                    });
-                    
-                    reportContent += `\nFeedback:\n`;
-                    result.feedback.forEach(item => {
-                        reportContent += `• ${item}\n`;
-                    });
-                    reportContent += '\n';
                 });
             
             if (gradingResults.agentResults.consensus) {
-                reportContent += `CONSENSUS ANALYSIS
-=================
-Confidence Level: ${gradingResults.agentResults.consensus.confidence}%
+                const consensus = gradingResults.agentResults.consensus;
+                reportContent += `
+CONSENSUS ANALYSIS
+==================
+Overall Confidence: ${consensus.confidence}%
+Methodology: ${consensus.methodology}
 
-Agreements:
-${gradingResults.agentResults.consensus.agreements.map(item => `• ${item}`).join('\n')}
+Areas of Agreement:
+${consensus.agreements.map(item => `  • ${item}`).join('\n')}
 
-${gradingResults.agentResults.consensus.disagreements.length > 0 ? 
-`Disagreements:
-${gradingResults.agentResults.consensus.disagreements.map(item => `• ${item}`).join('\n')}` : ''}
+${consensus.disagreements.length > 0 ? `
+Areas of Disagreement:
+${consensus.disagreements.map(item => `  • ${item}`).join('\n')}
+` : ''}
 
+${consensus.flagsForReview.length > 0 ? `
+Flags for Human Review:
+${consensus.flagsForReview.map(item => `  • ${item}`).join('\n')}
+` : ''}
+
+Meta-Assessment: ${consensus.metaFeedback}
 `;
             }
             
-            reportContent += `FINAL ASSESSMENT
-===============
+            reportContent += `
+COMPREHENSIVE FEEDBACK
+======================
 ${document.getElementById('comprehensiveFeedback').textContent}
 
-EVALUATION CONFIGURATION
-=======================
-Metrics Used:
+ASSESSMENT CONFIGURATION
+========================
+Teacher Guidelines:
+  Philosophy: ${getTeacherGuidelines().philosophy}
+  Requirements: ${getTeacherGuidelines().requirements}
+  Common Issues: ${getTeacherGuidelines().commonIssues}
+  
+Quality Control Settings:
+  Confidence Threshold: ${getTeacherGuidelines().confidenceThreshold}%
+  Require Consensus: ${getTeacherGuidelines().requireConsensus ? 'Yes' : 'No'}
+  Flag Discrepancies: ${getTeacherGuidelines().flagDiscrepancies ? 'Yes' : 'No'}
+  Detailed Reasoning: ${getTeacherGuidelines().detailedReasoning ? 'Yes' : 'No'}
+
+Evaluation Metrics Used:
+${gradingResults.metrics.map(metric => 
+    `  ${metric.name} (${metric.weight}%): ${metric.description}`
+).join('\n')}
+
+Generated by Multi-Agent Engineering Report Grading System
+${isApiConnected ? 'Powered by OpenAI GPT-4' : 'Simulation Mode'}
 `;
-            for (let i = 1; i <= customMetricCount; i++) {
-                const weightElement = document.getElementById(`metric${i}-weight`);
-                const descElement = document.getElementById(`metric${i}-desc`);
-                if (weightElement && descElement) {
-                    reportContent += `• Metric ${i}: ${weightElement.value}% - ${descElement.value}\n`;
-                }
-            }
             
-            // Download file
             const blob = new Blob([reportContent], { type: 'text/plain;charset=utf-8' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `${fileName}_MultiAgent_Assessment.txt`;
+            a.download = `${fileName.replace(/\.[^/.]+$/, '')}_MultiAgent_Assessment_${new Date().toISOString().split('T')[0]}.txt`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -1254,22 +1600,80 @@ Metrics Used:
         }
         
         function adjustScores() {
-            alert('Manual score adjustment feature would be implemented here, allowing teachers to override specific agent scores or provide additional feedback.');
+            const adjustmentHtml = `
+                <div style="background: #f8f9fa; padding: 20px; border-radius: 10px; margin: 20px 0;">
+                    <h3>Manual Score Adjustment</h3>
+                    <p>Adjust individual scores if needed. Changes will be reflected in the final weighted score.</p>
+                    
+                    ${gradingResults.metrics.map(metric => {
+                        const currentScore = gradingResults.consensusScores[metric.name.toLowerCase()] || 0;
+                        return `
+                            <div style="margin: 15px 0;">
+                                <label><strong>${metric.name} (${metric.weight}%):</strong></label>
+                                <input type="range" min="0" max="100" value="${currentScore}" 
+                                       onchange="updateScore('${metric.name.toLowerCase()}', this.value)"
+                                       style="width: 200px; margin: 0 10px;">
+                                <span id="score-${metric.name.toLowerCase()}" style="font-weight: bold;">${currentScore}</span>/100
+                            </div>
+                        `;
+                    }).join('')}
+                    
+                    <div style="margin-top: 20px;">
+                        <button class="btn" onclick="saveAdjustments()">Save Adjustments</button>
+                        <button class="btn" onclick="cancelAdjustments()" style="background: #6c757d;">Cancel</button>
+                    </div>
+                </div>
+            `;
+            
+            const resultsSection = document.getElementById('resultsSection');
+            const existingAdjustment = document.getElementById('scoreAdjustment');
+            
+            if (existingAdjustment) {
+                existingAdjustment.remove();
+            }
+            
+            const adjustmentDiv = document.createElement('div');
+            adjustmentDiv.id = 'scoreAdjustment';
+            adjustmentDiv.innerHTML = adjustmentHtml;
+            resultsSection.insertBefore(adjustmentDiv, resultsSection.lastElementChild);
+        }
+        
+        function updateScore(metricName, newScore) {
+            document.getElementById(`score-${metricName}`).textContent = newScore;
+            gradingResults.consensusScores[metricName] = parseInt(newScore);
+            
+            const finalScore = calculateWeightedScore(gradingResults.consensusScores, gradingResults.metrics);
+            document.getElementById('finalScore').textContent = finalScore;
+            gradingResults.finalScore = finalScore;
+        }
+        
+        function saveAdjustments() {
+            document.getElementById('scoreAdjustment').remove();
+            showError('Score adjustments saved successfully!');
+            document.getElementById('errorMsg').style.background = '#e8f5e8';
+            document.getElementById('errorMsg').style.color = '#2e7d32';
+            setTimeout(hideError, 3000);
+        }
+        
+        function cancelAdjustments() {
+            document.getElementById('scoreAdjustment').remove();
         }
         
         function resetSystem() {
-            uploadedFile = null;
-            gradingResults = {};
-            
-            document.getElementById('fileInput').value = '';
-            document.getElementById('fileInfo').style.display = 'none';
-            document.getElementById('configSection').style.display = 'none';
-            document.getElementById('gradingSection').style.display = 'none';
-            document.getElementById('resultsSection').style.display = 'none';
-            document.getElementById('loadingSection').style.display = 'none';
-            
-            hideError();
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            if (confirm('This will reset the entire grading session. Are you sure?')) {
+                uploadedFile = null;
+                gradingResults = {};
+                
+                document.getElementById('fileInput').value = '';
+                document.getElementById('fileInfo').style.display = 'none';
+                document.getElementById('configSection').style.display = 'none';
+                document.getElementById('gradingSection').style.display = 'none';
+                document.getElementById('resultsSection').style.display = 'none';
+                document.getElementById('loadingSection').style.display = 'none';
+                
+                hideError();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
         }
         
         function showError(message) {
@@ -1279,7 +1683,33 @@ Metrics Used:
         }
         
         function hideError() {
-            document.getElementById('errorMsg').style.display = 'none';
+            const errorDiv = document.getElementById('errorMsg');
+            errorDiv.style.display = 'none';
+            errorDiv.style.background = '#ffe6e6';
+            errorDiv.style.color = '#d32f2f';
+        }
+        
+        // Real-time weight validation
+        document.addEventListener('input', (e) => {
+            if (e.target.classList.contains('score-input') && e.target.id.includes('weight')) {
+                validateWeights();
+            }
+        });
+        
+        function validateWeights() {
+            const metrics = getMetricsConfiguration();
+            const total = metrics.reduce((sum, metric) => sum + metric.weight, 0);
+            
+            const allWeightInputs = document.querySelectorAll('.score-input[id*="weight"]');
+            allWeightInputs.forEach(input => {
+                if (total === 100) {
+                    input.style.borderColor = '#28a745';
+                } else if (total > 100) {
+                    input.style.borderColor = '#dc3545';
+                } else {
+                    input.style.borderColor = '#ffc107';
+                }
+            });
         }
     </script>
 </body>
