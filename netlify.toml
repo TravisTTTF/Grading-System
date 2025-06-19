@@ -8,6 +8,3 @@
   from = "/.netlify/functions/*"
   to = "/.netlify/functions/:splat"
   status = 200
-
-# Environment variables needed:
-# OPENAI_API_KEY = your_openai_api_key_here
