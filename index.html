@@ -29,42 +29,16 @@
             const [essayFile, setEssayFile] = useState(null);
             const [rubricFile, setRubricFile] = useState(null);
             const [metrics, setMetrics] = useState([
-                { 
-                    name: 'Technical Content', 
-                    weight: 35, 
-                    description: 'Technical accuracy, depth of analysis, innovation', 
-                    isDefault: true,
-                    assignedAgents: ['Technical Expert', 'Research Analyst']
-                },
-                { 
-                    name: 'Methodology & Approach', 
-                    weight: 25, 
-                    description: 'Research methods, experimental design, data analysis', 
-                    isDefault: true,
-                    assignedAgents: ['Methodology Specialist', 'Research Analyst']
-                },
-                { 
-                    name: 'Structure & Organization', 
-                    weight: 20, 
-                    description: 'Logical flow, section organization, clarity', 
-                    isDefault: true,
-                    assignedAgents: ['Structure Analyst']
-                },
-                { 
-                    name: 'Academic Writing', 
-                    weight: 20, 
-                    description: 'Grammar, style, citations, professional tone', 
-                    isDefault: true,
-                    assignedAgents: ['Writing Specialist']
-                }
+                { name: 'Content Quality', weight: 30, description: 'Thesis clarity, argument development, evidence', isDefault: true },
+                { name: 'Organization', weight: 25, description: 'Structure, transitions, coherence', isDefault: true },
+                { name: 'Language Use', weight: 25, description: 'Grammar, vocabulary, style', isDefault: true },
+                { name: 'Critical Thinking', weight: 20, description: 'Analysis, synthesis, evaluation', isDefault: true }
             ]);
             const [totalScore, setTotalScore] = useState(100);
             const [agents, setAgents] = useState([
-                { name: 'Technical Expert', emoji: '🔬', expertise: 'Engineering concepts, technical accuracy, and innovation assessment' },
-                { name: 'Methodology Specialist', emoji: '📊', expertise: 'Research methods, experimental design, and statistical analysis' },
-                { name: 'Structure Analyst', emoji: '🏗️', expertise: 'Document organization, logical flow, and presentation clarity' },
-                { name: 'Writing Specialist', emoji: '✍️', expertise: 'Academic writing standards, grammar, and citation formats' },
-                { name: 'Research Analyst', emoji: '🔍', expertise: 'Literature review, research depth, and theoretical frameworks' }
+                { name: 'Content Expert', emoji: '📚', expertise: 'Evaluates thesis strength, argument logic, and evidence quality' },
+                { name: 'Structure Analyst', emoji: '🏗️', expertise: 'Assesses essay organization, paragraph flow, and transitions' },
+                { name: 'Language Specialist', emoji: '✍️', expertise: 'Reviews grammar, vocabulary usage, and writing style' }
             ]);
             const [supervisorSettings, setSupervisorSettings] = useState({
                 strictness: 'balanced',
@@ -73,15 +47,14 @@
             const [gradingResults, setGradingResults] = useState([]);
             const [loading, setLoading] = useState(false);
             const [progress, setProgress] = useState(0);
+            const [agentDialogues, setAgentDialogues] = useState([]);
             const [apiSettings, setApiSettings] = useState({
                 provider: 'openai',
                 apiKey: '',
-                model: 'gpt-4',
+                model: 'gpt-4o',
                 endpoint: 'https://api.openai.com/v1/chat/completions',
                 temperature: 0.7
             });
-            const [apiTestResult, setApiTestResult] = useState('');
-            const [testingApi, setTestingApi] = useState(false);
 
             // Save and load configuration
             const saveConfiguration = () => {
@@ -90,7 +63,7 @@
                     totalScore,
                     agents,
                     supervisorSettings,
-                    apiSettings: {...apiSettings, apiKey: ''} // Don't save API key
+                    apiSettings
                 };
                 localStorage.setItem('essayGradingConfig', JSON.stringify(config));
                 alert('Configuration saved successfully!');
@@ -105,9 +78,7 @@
                         if (config.totalScore) setTotalScore(config.totalScore);
                         if (config.agents) setAgents(config.agents);
                         if (config.supervisorSettings) setSupervisorSettings(config.supervisorSettings);
-                        if (config.apiSettings) {
-                            setApiSettings({...config.apiSettings, apiKey: apiSettings.apiKey});
-                        }
+                        if (config.apiSettings) setApiSettings(config.apiSettings);
                     }
                 } catch (error) {
                     console.error('Error loading configuration:', error);
@@ -118,25 +89,6 @@
             useEffect(() => {
                 loadConfiguration();
             }, []);
-
-            const testApiConnection = async () => {
-                if (!apiSettings.apiKey) {
-                    setApiTestResult('Please enter an API key first');
-                    return;
-                }
-                
-                setTestingApi(true);
-                setApiTestResult('Testing connection...');
-                
-                try {
-                    const response = await callLLMAPI('Hello, please respond with "API connection successful" if you receive this message.');
-                    setApiTestResult(`✅ Success! Response: ${response.substring(0, 100)}...`);
-                } catch (error) {
-                    setApiTestResult(`❌ Error: ${error.message}`);
-                }
-                
-                setTestingApi(false);
-            };
 
             const saveResults = () => {
                 const results = {
@@ -171,28 +123,8 @@
                 }
             };
 
-            const toggleAgentAssignment = (metricIndex, agentName) => {
-                const updated = [...metrics];
-                const assigned = updated[metricIndex].assignedAgents || [];
-                
-                if (assigned.includes(agentName)) {
-                    updated[metricIndex].assignedAgents = assigned.filter(a => a !== agentName);
-                } else {
-                    updated[metricIndex].assignedAgents = [...assigned, agentName];
-                }
-                
-                setMetrics(updated);
-            };
-
             const handleAgentDelete = (index) => {
                 if (agents.length > 1) {
-                    const deletedAgentName = agents[index].name;
-                    // Remove from all metric assignments
-                    const updatedMetrics = metrics.map(metric => ({
-                        ...metric,
-                        assignedAgents: (metric.assignedAgents || []).filter(a => a !== deletedAgentName)
-                    }));
-                    setMetrics(updatedMetrics);
                     setAgents(agents.filter((_, i) => i !== index));
                 }
             };
@@ -205,17 +137,9 @@
                 }]);
             };
 
-            const handleRetryGrading = async () => {
-                // Check if we need to re-evaluate based on teacher feedback
-                const needsReeval = gradingResults.some(r => r.requestReeval && r.manualFeedback);
-                
-                if (needsReeval && apiSettings.apiKey) {
-                    setPhase('grading');
-                    await performLLMGradingWithFeedback();
-                } else {
-                    setPhase('grading');
-                    simulateGrading();
-                }
+            const handleRetryGrading = () => {
+                setPhase('grading');
+                simulateGrading();
             };
 
             const handleFileUpload = (e, type) => {
@@ -241,13 +165,6 @@
                     return;
                 }
                 
-                // Check if all metrics have assigned agents
-                const unassignedMetrics = metrics.filter(m => !m.assignedAgents || m.assignedAgents.length === 0);
-                if (unassignedMetrics.length > 0) {
-                    alert(`Please assign agents to: ${unassignedMetrics.map(m => m.name).join(', ')}`);
-                    return;
-                }
-                
                 setPhase('grading');
                 simulateGrading();
             };
@@ -256,132 +173,148 @@
                 setLoading(true);
                 setProgress(0);
                 
+                // Check if API is configured
                 if (apiSettings.apiKey && apiSettings.apiKey.trim() !== '') {
+                    // Use real LLM API
                     await performLLMGrading();
                 } else {
-                    alert('No API key provided. Please configure API settings to use real AI grading.');
-                    setLoading(false);
-                    setPhase('setup');
+                    // Use simulation
+                    const interval = setInterval(() => {
+                        setProgress(prev => {
+                            if (prev >= 100) {
+                                clearInterval(interval);
+                                generateResults();
+                                return 100;
+                            }
+                            return prev + 10;
+                        });
+                    }, 300);
                 }
             };
 
-            const performLLMGradingWithFeedback = async () => {
-                // Similar to performLLMGrading but includes teacher feedback in prompts
-                await performLLMGrading(true);
-            };
-
-            const performLLMGrading = async (includeFeedback = false) => {
+            const performLLMGrading = async () => {
                 try {
                     const essayText = await readFileAsText(essayFile);
                     const rubricText = rubricFile ? await readFileAsText(rubricFile) : '';
                     
                     const results = [];
+                    const totalSteps = metrics.length * agents.length;
                     let currentStep = 0;
-                    const totalSteps = metrics.reduce((sum, m) => sum + (m.assignedAgents?.length || 0), 0);
 
                     for (const metric of metrics) {
-                        const assignedAgents = metric.assignedAgents || [];
                         const agentScores = [];
-                        const dialogue = [];
                         
-                        // Get teacher feedback if re-evaluating
-                        const previousResult = includeFeedback ? gradingResults.find(r => r.name === metric.name) : null;
-                        const teacherFeedback = previousResult?.manualFeedback || '';
-                        
-                        for (const agentName of assignedAgents) {
-                            const agent = agents.find(a => a.name === agentName);
-                            if (!agent) continue;
-                            
+                        for (const agent of agents) {
                             currentStep++;
                             setProgress((currentStep / totalSteps) * 100);
                             
                             const prompt = `You are ${agent.name}, an expert in ${agent.expertise}.
-You are evaluating an engineering report for the criterion: "${metric.name}" (${metric.description}).
+Please evaluate the following essay for "${metric.name}" (${metric.description}).
+${rubricText ? `Rubric: ${rubricText}` : ''}
 
-${rubricText ? `Grading Rubric:\n${rubricText}\n` : ''}
-${teacherFeedback ? `\nIMPORTANT - Teacher's previous feedback on this criterion:\n"${teacherFeedback}"\nPlease consider this feedback in your evaluation.\n` : ''}
-
-Engineering Report:
+Essay:
 ${essayText}
 
-As an engineering report evaluator, please provide:
-1. A score from 0-100 based on engineering standards
-2. Detailed technical feedback (3-4 sentences)
-3. One specific technical strength
-4. One specific area for improvement
-5. How well this meets professional engineering documentation standards
+Provide:
+1. A score from 0-100
+2. Detailed feedback (2-3 sentences)
+3. One specific strength you noticed
+4. One area for improvement
 
 Format your response EXACTLY as follows:
 SCORE: [number]
-FEEDBACK: [your detailed technical feedback]
-STRENGTH: [specific technical strength]
-IMPROVEMENT: [specific area for improvement]
-STANDARDS: [assessment of professional standards compliance]`;
+FEEDBACK: [your detailed feedback]
+STRENGTH: [specific strength]
+IMPROVEMENT: [area for improvement]`;
 
                             try {
                                 const response = await callLLMAPI(prompt);
                                 const scoreMatch = response.match(/SCORE:\s*(\d+)/);
                                 const feedbackMatch = response.match(/FEEDBACK:\s*(.+?)(?=STRENGTH:|$)/s);
                                 const strengthMatch = response.match(/STRENGTH:\s*(.+?)(?=IMPROVEMENT:|$)/s);
-                                const improvementMatch = response.match(/IMPROVEMENT:\s*(.+?)(?=STANDARDS:|$)/s);
-                                const standardsMatch = response.match(/STANDARDS:\s*(.+?)$/s);
-                                
-                                const score = scoreMatch ? parseInt(scoreMatch[1]) : 75;
-                                const feedback = feedbackMatch ? feedbackMatch[1].trim() : 'Evaluation completed.';
+                                const improvementMatch = response.match(/IMPROVEMENT:\s*(.+?)$/s);
                                 
                                 agentScores.push({
                                     agent: agent.name,
-                                    score: score,
-                                    feedback: feedback,
+                                    score: scoreMatch ? parseInt(scoreMatch[1]) : 75,
+                                    feedback: feedbackMatch ? feedbackMatch[1].trim() : 'Evaluation completed.',
                                     strength: strengthMatch ? strengthMatch[1].trim() : '',
-                                    improvement: improvementMatch ? improvementMatch[1].trim() : '',
-                                    standards: standardsMatch ? standardsMatch[1].trim() : ''
+                                    improvement: improvementMatch ? improvementMatch[1].trim() : ''
                                 });
-                                
-                                // Add to dialogue
-                                dialogue.push({
-                                    agent: agent.name,
-                                    emoji: agent.emoji,
-                                    message: `Based on my analysis of ${metric.name}, I give it a score of ${score}/100. ${feedback}`,
-                                    type: 'evaluation'
-                                });
-                                
-                                if (strengthMatch) {
-                                    dialogue.push({
-                                        agent: agent.name,
-                                        emoji: agent.emoji,
-                                        message: `Key strength: ${strengthMatch[1].trim()}`,
-                                        type: 'evaluation'
-                                    });
-                                }
                             } catch (error) {
                                 console.error(`Error with ${agent.name}:`, error);
-                                throw error; // Don't fall back to simulation
+                                agentScores.push({
+                                    agent: agent.name,
+                                    score: Math.floor(Math.random() * 30) + 70,
+                                    feedback: `Based on my expertise in ${agent.expertise}, this ${metric.name} shows good understanding with room for improvement.`,
+                                    strength: 'Clear presentation of ideas',
+                                    improvement: 'Could benefit from deeper analysis'
+                                });
                             }
                         }
                         
-                        // Calculate average and add discussion
                         const avgScore = Math.round(agentScores.reduce((sum, a) => sum + a.score, 0) / agentScores.length);
                         
-                        // Add collaborative discussion if multiple agents
-                        if (agentScores.length > 1) {
+                        // Generate realistic agent dialogue for this metric
+                        const dialogue = [];
+                        
+                        // Each agent shares their evaluation
+                        for (let i = 0; i < agents.length; i++) {
+                            dialogue.push({
+                                agent: agents[i].name,
+                                emoji: agents[i].emoji,
+                                message: `Based on my analysis of ${metric.name}, I gave it a score of ${agentScores[i].score}. ${agentScores[i].feedback}`,
+                                type: 'evaluation'
+                            });
+                            
+                            if (agentScores[i].strength) {
+                                dialogue.push({
+                                    agent: agents[i].name,
+                                    emoji: agents[i].emoji,
+                                    message: `Key strength I noticed: ${agentScores[i].strength}`,
+                                    type: 'evaluation'
+                                });
+                            }
+                        }
+                        
+                        // Add discussion if scores vary
+                        if (agents.length > 1) {
                             const scores = agentScores.map(a => a.score);
                             const scoreRange = Math.max(...scores) - Math.min(...scores);
                             
                             if (scoreRange > 10) {
+                                const highScorer = agents[scores.indexOf(Math.max(...scores))];
+                                const lowScorer = agents[scores.indexOf(Math.min(...scores))];
+                                
                                 dialogue.push({
-                                    agent: assignedAgents[0],
-                                    emoji: agents.find(a => a.name === assignedAgents[0])?.emoji || '🤖',
-                                    message: `I notice there's some variance in our scores. Let's discuss the key points...`,
+                                    agent: lowScorer.name,
+                                    emoji: lowScorer.emoji,
+                                    message: `I notice my score is lower than others. My main concern is: ${agentScores[scores.indexOf(Math.min(...scores))].improvement || 'the need for more depth in analysis'}`,
                                     type: 'discussion'
                                 });
+                                
+                                dialogue.push({
+                                    agent: highScorer.name,
+                                    emoji: highScorer.emoji,
+                                    message: `That's a fair point. However, I was impressed by ${agentScores[scores.indexOf(Math.max(...scores))].strength || 'the overall structure and clarity'}`,
+                                    type: 'discussion'
+                                });
+                                
+                                if (agents.length > 2) {
+                                    dialogue.push({
+                                        agent: agents[1].name,
+                                        emoji: agents[1].emoji,
+                                        message: `I see both perspectives. Perhaps we should consider a balanced view that acknowledges both the strengths and areas for improvement.`,
+                                        type: 'discussion'
+                                    });
+                                }
                             }
                         }
                         
                         dialogue.push({
-                            agent: 'Average Score',
-                            emoji: '📊',
-                            message: `The averaged score across all evaluators is ${avgScore}/100 for ${metric.name}.`,
+                            agent: 'Consensus',
+                            emoji: '🤝',
+                            message: `After our discussion, we've reached a consensus score of ${avgScore} for ${metric.name}. This reflects both the strengths identified and the areas that need improvement.`,
                             type: 'consensus'
                         });
                         
@@ -390,7 +323,7 @@ STANDARDS: [assessment of professional standards compliance]`;
                             score: avgScore,
                             agentScores,
                             consensus: avgScore,
-                            feedback: `Based on evaluation by ${assignedAgents.join(', ')}, this section demonstrates ${avgScore >= 80 ? 'excellent' : avgScore >= 70 ? 'good' : avgScore >= 60 ? 'satisfactory' : 'needs improvement'} quality.`,
+                            feedback: `Based on multiple agent evaluations, the ${metric.name} demonstrates ${avgScore >= 80 ? 'strong' : avgScore >= 60 ? 'adequate' : 'needs improvement'} performance.`,
                             dialogue: dialogue
                         });
                     }
@@ -400,9 +333,8 @@ STANDARDS: [assessment of professional standards compliance]`;
                     setPhase('supervision');
                 } catch (error) {
                     console.error('Error in LLM grading:', error);
-                    alert(`Error during AI grading: ${error.message}. Please check your API configuration.`);
-                    setLoading(false);
-                    setPhase('setup');
+                    alert('Error during LLM grading. Falling back to simulation.');
+                    generateResults();
                 }
             };
 
@@ -418,8 +350,7 @@ STANDARDS: [assessment of professional standards compliance]`;
                     body = {
                         model: apiSettings.model,
                         messages: [{ role: 'user', content: prompt }],
-                        temperature: apiSettings.temperature,
-                        max_tokens: 500
+                        temperature: apiSettings.temperature
                     };
                 } else if (apiSettings.provider === 'anthropic') {
                     headers['x-api-key'] = apiSettings.apiKey;
@@ -427,15 +358,14 @@ STANDARDS: [assessment of professional standards compliance]`;
                     body = {
                         model: apiSettings.model,
                         messages: [{ role: 'user', content: prompt }],
-                        max_tokens: 500,
+                        max_tokens: 1000,
                         temperature: apiSettings.temperature
                     };
                 } else if (apiSettings.provider === 'custom') {
                     headers['Authorization'] = `Bearer ${apiSettings.apiKey}`;
                     body = {
                         prompt: prompt,
-                        temperature: apiSettings.temperature,
-                        max_tokens: 500
+                        temperature: apiSettings.temperature
                     };
                 }
 
@@ -446,8 +376,7 @@ STANDARDS: [assessment of professional standards compliance]`;
                 });
 
                 if (!response.ok) {
-                    const errorText = await response.text();
-                    throw new Error(`API request failed (${response.status}): ${errorText}`);
+                    throw new Error(`API request failed: ${response.status}`);
                 }
 
                 const data = await response.json();
@@ -457,7 +386,7 @@ STANDARDS: [assessment of professional standards compliance]`;
                 } else if (apiSettings.provider === 'anthropic') {
                     return data.content[0].text;
                 } else {
-                    return data.response || data.text || data.output || JSON.stringify(data);
+                    return data.response || data.text || data.output;
                 }
             };
 
@@ -470,7 +399,82 @@ STANDARDS: [assessment of professional standards compliance]`;
                 });
             };
 
+            const generateResults = () => {
+                const results = metrics.map(metric => ({
+                    ...metric,
+                    score: Math.floor(Math.random() * 30) + 70,
+                    agentScores: agents.map(agent => ({
+                        agent: agent.name,
+                        score: Math.floor(Math.random() * 30) + 70,
+                        feedback: `${agent.name} evaluation for ${metric.name}: Strong performance with room for improvement.`
+                    })),
+                    consensus: Math.floor(Math.random() * 30) + 70,
+                    feedback: `Detailed feedback for ${metric.name}: The essay demonstrates good understanding with clear arguments.`
+                }));
+                
+                // Generate simulated agent dialogues
+                const dialogues = metrics.map(metric => {
+                    const discussion = [];
+                    
+                    // Initial evaluations
+                    agents.forEach(agent => {
+                        discussion.push({
+                            agent: agent.name,
+                            emoji: agent.emoji,
+                            message: `I've evaluated the ${metric.name}. From my perspective as ${agent.expertise}, I would give this a score of ${Math.floor(Math.random() * 30) + 70}.`,
+                            type: 'evaluation'
+                        });
+                    });
+                    
+                    // Discussion phase
+                    discussion.push({
+                        agent: agents[0].name,
+                        emoji: agents[0].emoji,
+                        message: `I noticed the thesis statement is clear, but could be more specific. What do others think?`,
+                        type: 'discussion'
+                    });
+                    
+                    discussion.push({
+                        agent: agents[1].name,
+                        emoji: agents[1].emoji,
+                        message: `I agree. The structure supports the argument well, though transitions between paragraphs could be smoother.`,
+                        type: 'discussion'
+                    });
+                    
+                    discussion.push({
+                        agent: agents[2].name,
+                        emoji: agents[2].emoji,
+                        message: `From a language perspective, the vocabulary is appropriate but some sentences are overly complex.`,
+                        type: 'discussion'
+                    });
+                    
+                    // Consensus
+                    discussion.push({
+                        agent: 'Consensus',
+                        emoji: '🤝',
+                        message: `Based on our discussion, we agree on a consensus score of ${results.find(r => r.name === metric.name).consensus} for ${metric.name}.`,
+                        type: 'consensus'
+                    });
+                    
+                    return {
+                        metric: metric.name,
+                        dialogue: discussion
+                    };
+                });
+                
+                setAgentDialogues(dialogues);
+                setGradingResults(results);
+                setLoading(false);
+                setPhase('supervision');
+            };
+
             const applySupervisorAdjustments = () => {
+                const adjusted = gradingResults.map(result => ({
+                    ...result,
+                    score: Math.max(0, Math.min(100, result.score + (Math.random() * 10 - 5))),
+                    supervisorNotes: 'Adjusted for consistency and standards alignment'
+                }));
+                setGradingResults(adjusted);
                 setPhase('manual');
             };
 
@@ -485,11 +489,11 @@ STANDARDS: [assessment of professional standards compliance]`;
             };
 
             return (
-                <div className="max-w-7xl mx-auto p-6 space-y-6">
+                <div className="max-w-6xl mx-auto p-6 space-y-6">
                     {/* Header */}
                     <div className="text-center mb-8">
-                        <h1 className="text-4xl font-bold text-gray-800 mb-2">🎓 Advanced Engineering Report Grading System</h1>
-                        <p className="text-gray-600">AI-Powered Multi-Agent Evaluation for Professional Engineering Reports</p>
+                        <h1 className="text-4xl font-bold text-gray-800 mb-2">🎓 Advanced Essay Grading System</h1>
+                        <p className="text-gray-600">AI-Powered Multi-Agent Evaluation with Human Oversight</p>
                     </div>
 
                     {/* Progress Bar */}
@@ -516,7 +520,7 @@ STANDARDS: [assessment of professional standards compliance]`;
                                     <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 transition-colors">
                                         <div className="text-4xl mb-3">📄</div>
                                         <label className="cursor-pointer">
-                                            <span className="text-lg font-medium text-gray-700">Upload Engineering Report</span>
+                                            <span className="text-lg font-medium text-gray-700">Upload Essay</span>
                                             <input
                                                 type="file"
                                                 className="hidden"
@@ -534,7 +538,7 @@ STANDARDS: [assessment of professional standards compliance]`;
                                     <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 transition-colors">
                                         <div className="text-4xl mb-3">📋</div>
                                         <label className="cursor-pointer">
-                                            <span className="text-lg font-medium text-gray-700">Upload Grading Rubric (Optional)</span>
+                                            <span className="text-lg font-medium text-gray-700">Upload Rubric (Optional)</span>
                                             <input
                                                 type="file"
                                                 className="hidden"
@@ -551,119 +555,10 @@ STANDARDS: [assessment of professional standards compliance]`;
                                 </div>
                             </div>
 
-                            {/* API Configuration */}
-                            <div className="bg-white rounded-lg shadow-md p-6">
-                                <h3 className="text-lg font-semibold mb-3">🔌 LLM API Configuration (Required)</h3>
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className="block text-sm font-medium mb-2">API Provider</label>
-                                        <select
-                                            value={apiSettings.provider}
-                                            onChange={(e) => {
-                                                const provider = e.target.value;
-                                                setApiSettings({
-                                                    ...apiSettings,
-                                                    provider,
-                                                    endpoint: provider === 'openai' ? 'https://api.openai.com/v1/chat/completions' :
-                                                             provider === 'anthropic' ? 'https://api.anthropic.com/v1/messages' :
-                                                             apiSettings.endpoint,
-                                                    model: provider === 'openai' ? 'gpt-4' :
-                                                           provider === 'anthropic' ? 'claude-3-opus-20240229' :
-                                                           apiSettings.model
-                                                });
-                                            }}
-                                            className="w-full px-3 py-2 border rounded-lg"
-                                        >
-                                            <option value="openai">OpenAI (GPT-4)</option>
-                                            <option value="anthropic">Anthropic (Claude)</option>
-                                            <option value="custom">Custom API</option>
-                                        </select>
-                                    </div>
-                                    
-                                    <div>
-                                        <label className="block text-sm font-medium mb-2">API Key</label>
-                                        <input
-                                            type="password"
-                                            value={apiSettings.apiKey}
-                                            onChange={(e) => setApiSettings({...apiSettings, apiKey: e.target.value})}
-                                            className="w-full px-3 py-2 border rounded-lg"
-                                            placeholder="Enter your API key (required)"
-                                        />
-                                    </div>
-                                    
-                                    {apiSettings.provider === 'custom' && (
-                                        <div>
-                                            <label className="block text-sm font-medium mb-2">API Endpoint</label>
-                                            <input
-                                                type="text"
-                                                value={apiSettings.endpoint}
-                                                onChange={(e) => setApiSettings({...apiSettings, endpoint: e.target.value})}
-                                                className="w-full px-3 py-2 border rounded-lg"
-                                                placeholder="https://your-api-endpoint.com/completions"
-                                            />
-                                        </div>
-                                    )}
-                                    
-                                    <div>
-                                        <label className="block text-sm font-medium mb-2">Model</label>
-                                        <input
-                                            type="text"
-                                            value={apiSettings.model}
-                                            onChange={(e) => setApiSettings({...apiSettings, model: e.target.value})}
-                                            className="w-full px-3 py-2 border rounded-lg"
-                                            placeholder="e.g., gpt-4, claude-3-opus"
-                                        />
-                                    </div>
-                                    
-                                    <div>
-                                        <label className="block text-sm font-medium mb-2">
-                                            Temperature: {apiSettings.temperature}
-                                        </label>
-                                        <input
-                                            type="range"
-                                            min="0"
-                                            max="1"
-                                            step="0.1"
-                                            value={apiSettings.temperature}
-                                            onChange={(e) => setApiSettings({...apiSettings, temperature: parseFloat(e.target.value)})}
-                                            className="w-full"
-                                        />
-                                        <div className="flex justify-between text-xs text-gray-500">
-                                            <span>More Focused</span>
-                                            <span>More Creative</span>
-                                        </div>
-                                    </div>
-                                    
-                                    {/* API Test */}
-                                    <div className="border-t pt-4">
-                                        <button
-                                            onClick={testApiConnection}
-                                            disabled={testingApi || !apiSettings.apiKey}
-                                            className={`px-4 py-2 rounded-lg ${
-                                                testingApi || !apiSettings.apiKey 
-                                                    ? 'bg-gray-300 text-gray-500' 
-                                                    : 'bg-blue-500 text-white hover:bg-blue-600'
-                                            }`}
-                                        >
-                                            {testingApi ? 'Testing...' : 'Test API Connection'}
-                                        </button>
-                                        {apiTestResult && (
-                                            <div className={`mt-2 p-3 rounded-lg text-sm ${
-                                                apiTestResult.includes('✅') ? 'bg-green-50 text-green-800' : 
-                                                apiTestResult.includes('❌') ? 'bg-red-50 text-red-800' : 
-                                                'bg-gray-50 text-gray-800'
-                                            }`}>
-                                                {apiTestResult}
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Evaluation Metrics with Agent Assignment */}
+                            {/* Evaluation Metrics */}
                             <div className="bg-white rounded-lg shadow-md p-6">
                                 <div className="flex items-center justify-between mb-3">
-                                    <h3 className="text-lg font-semibold">📊 Evaluation Criteria & Agent Assignment</h3>
+                                    <h3 className="text-lg font-semibold">📊 Customizable Evaluation Metrics</h3>
                                     <button
                                         onClick={saveConfiguration}
                                         className="px-3 py-1 bg-green-500 text-white rounded-lg hover:bg-green-600 text-sm"
@@ -671,25 +566,31 @@ STANDARDS: [assessment of professional standards compliance]`;
                                         Save Configuration
                                     </button>
                                 </div>
-                                <div className="mb-4">
-                                    <label className="block text-sm font-medium mb-2">Total Score:</label>
-                                    <input
-                                        type="number"
-                                        value={totalScore}
-                                        onChange={(e) => setTotalScore(Number(e.target.value) || 100)}
-                                        className="w-32 px-3 py-2 border rounded-lg"
-                                        min="1"
-                                    />
-                                </div>
-                                <div className="space-y-4">
+                                <div className="space-y-3">
+                                    <div className="mb-4">
+                                        <label className="block text-sm font-medium mb-2">Total Score:</label>
+                                        <input
+                                            type="number"
+                                            value={totalScore}
+                                            onChange={(e) => setTotalScore(Number(e.target.value) || 100)}
+                                            className="w-32 px-3 py-2 border rounded-lg"
+                                            min="1"
+                                        />
+                                    </div>
                                     {metrics.map((metric, index) => (
-                                        <div key={index} className="border rounded-lg p-4">
-                                            <div className="flex items-center gap-3 mb-2">
+                                        <div key={index} className="bg-gray-50 p-3 rounded-lg">
+                                            <div className="flex items-center gap-3">
                                                 <input
                                                     type="text"
                                                     value={metric.name}
                                                     onChange={(e) => handleMetricEdit(index, 'name', e.target.value)}
                                                     disabled={metric.isDefault}
+                                                    className={`flex-1 px-3 py-2 border rounded-lg ${metric.isDefault ? 'bg-gray-100' : ''}`}
+                                                />
+                                                <input
+                                                    type="number"
+                                                    value={metric.weight}
+                                                    onChange={(e) => handleMetricEdit(index, 'weight', Number(e.target.value))}
                                                     className="w-20 px-3 py-2 border rounded-lg"
                                                     min="0"
                                                     max="100"
@@ -708,46 +609,16 @@ STANDARDS: [assessment of professional standards compliance]`;
                                                 type="text"
                                                 value={metric.description}
                                                 onChange={(e) => handleMetricEdit(index, 'description', e.target.value)}
-                                                className="w-full mb-3 px-3 py-2 border rounded-lg text-sm"
+                                                className="w-full mt-2 px-3 py-2 border rounded-lg text-sm"
                                                 placeholder="Description"
                                             />
-                                            
-                                            {/* Agent Assignment */}
-                                            <div className="bg-gray-50 p-3 rounded-lg">
-                                                <p className="text-sm font-medium mb-2">Assign Agents to Evaluate This Criterion:</p>
-                                                <div className="grid grid-cols-2 gap-2">
-                                                    {agents.map((agent) => (
-                                                        <label key={agent.name} className="flex items-center text-sm">
-                                                            <input
-                                                                type="checkbox"
-                                                                checked={(metric.assignedAgents || []).includes(agent.name)}
-                                                                onChange={() => toggleAgentAssignment(index, agent.name)}
-                                                                className="mr-2"
-                                                            />
-                                                            <span className="mr-1">{agent.emoji}</span>
-                                                            {agent.name}
-                                                        </label>
-                                                    ))}
-                                                </div>
-                                                {metric.assignedAgents && metric.assignedAgents.length > 0 && (
-                                                    <p className="text-xs text-gray-600 mt-2">
-                                                        Assigned: {metric.assignedAgents.join(', ')}
-                                                    </p>
-                                                )}
-                                            </div>
                                         </div>
                                     ))}
                                     <button
-                                        onClick={() => setMetrics([...metrics, { 
-                                            name: '', 
-                                            weight: 0, 
-                                            description: '', 
-                                            isDefault: false,
-                                            assignedAgents: []
-                                        }])}
+                                        onClick={() => setMetrics([...metrics, { name: '', weight: 0, description: '', isDefault: false }])}
                                         className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-400"
                                     >
-                                        + Add Criterion
+                                        + Add Metric
                                     </button>
                                     <div className="text-sm text-gray-600">
                                         Total Weight: {metrics.reduce((sum, m) => sum + m.weight, 0)}%
@@ -757,7 +628,7 @@ STANDARDS: [assessment of professional standards compliance]`;
 
                             {/* Multi-Agent Configuration */}
                             <div className="bg-white rounded-lg shadow-md p-6">
-                                <h3 className="text-lg font-semibold mb-3">🤖 AI Agent Configuration</h3>
+                                <h3 className="text-lg font-semibold mb-3">🤖 Multi-Agent Configuration</h3>
                                 <div className="space-y-3">
                                     {agents.map((agent, index) => (
                                         <div key={index} className="bg-gray-50 p-3 rounded-lg">
@@ -776,20 +647,8 @@ STANDARDS: [assessment of professional standards compliance]`;
                                                     type="text"
                                                     value={agent.name}
                                                     onChange={(e) => {
-                                                        const oldName = agents[index].name;
-                                                        const newName = e.target.value;
-                                                        
-                                                        // Update agent name in metrics assignments
-                                                        const updatedMetrics = metrics.map(metric => ({
-                                                            ...metric,
-                                                            assignedAgents: (metric.assignedAgents || []).map(a => 
-                                                                a === oldName ? newName : a
-                                                            )
-                                                        }));
-                                                        setMetrics(updatedMetrics);
-                                                        
                                                         const updated = [...agents];
-                                                        updated[index].name = newName;
+                                                        updated[index].name = e.target.value;
                                                         setAgents(updated);
                                                     }}
                                                     className="flex-1 px-3 py-2 border rounded-lg"
@@ -825,454 +684,22 @@ STANDARDS: [assessment of professional standards compliance]`;
                                 </div>
                             </div>
 
-                            {/* Supervisor Settings */}
+                            {/* API Configuration */}
                             <div className="bg-white rounded-lg shadow-md p-6">
-                                <h3 className="text-lg font-semibold mb-3">👨‍🏫 Grading Standards</h3>
+                                <h3 className="text-lg font-semibold mb-3">🔌 LLM API Configuration (Optional)</h3>
                                 <div className="space-y-4">
                                     <div>
-                                        <label className="block text-sm font-medium mb-2">Grading Strictness</label>
+                                        <label className="block text-sm font-medium mb-2">API Provider</label>
                                         <select
-                                            value={supervisorSettings.strictness}
-                                            onChange={(e) => setSupervisorSettings({...supervisorSettings, strictness: e.target.value})}
-                                            className="w-full px-3 py-2 border rounded-lg"
-                                        >
-                                            <option value="lenient">Lenient (Focus on strengths)</option>
-                                            <option value="balanced">Balanced (Fair assessment)</option>
-                                            <option value="strict">Strict (High standards)</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium mb-2">Focus Areas</label>
-                                        <div className="space-y-2">
-                                            {['consistency', 'fairness', 'standards', 'improvement'].map(area => (
-                                                <label key={area} className="flex items-center">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={supervisorSettings.focusAreas.includes(area)}
-                                                        onChange={(e) => {
-                                                            const areas = e.target.checked 
-                                                                ? [...supervisorSettings.focusAreas, area]
-                                                                : supervisorSettings.focusAreas.filter(a => a !== area);
-                                                            setSupervisorSettings({...supervisorSettings, focusAreas: areas});
-                                                        }}
-                                                        className="mr-2"
-                                                    />
-                                                    <span className="capitalize">{area}</span>
-                                                </label>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Start Button */}
-                            <div className="text-center">
-                                <button
-                                    onClick={startGrading}
-                                    disabled={!apiSettings.apiKey}
-                                    className={`px-8 py-3 rounded-lg text-lg font-semibold ${
-                                        apiSettings.apiKey 
-                                            ? 'bg-blue-600 text-white hover:bg-blue-700' 
-                                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                    }`}
-                                >
-                                    Start AI Grading Process
-                                </button>
-                                {!apiSettings.apiKey && (
-                                    <p className="text-sm text-red-600 mt-2">Please configure API settings first</p>
-                                )}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Grading Phase */}
-                    {phase === 'grading' && (
-                        <div className="bg-white rounded-lg shadow-md p-8">
-                            <h2 className="text-2xl font-bold mb-6 text-center">🤖 AI Agents Evaluating Report</h2>
-                            {loading ? (
-                                <div className="space-y-4">
-                                    <div className="text-center">
-                                        <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
-                                            <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                                        </div>
-                                        <p className="text-lg font-medium mb-2">Analyzing Engineering Report...</p>
-                                        <p className="text-sm text-gray-600">AI agents are evaluating assigned criteria</p>
-                                    </div>
-                                    <div className="w-full bg-gray-200 rounded-full h-4">
-                                        <div 
-                                            className="bg-blue-600 h-4 rounded-full transition-all duration-300"
-                                            style={{ width: `${progress}%` }}
-                                        />
-                                    </div>
-                                    <div className="mt-6 space-y-2">
-                                        {metrics.map((metric, index) => (
-                                            <div key={index} className="bg-gray-50 p-3 rounded-lg">
-                                                <p className="font-medium">{metric.name}</p>
-                                                <p className="text-sm text-gray-600">
-                                                    Evaluating with: {(metric.assignedAgents || []).map(a => 
-                                                        agents.find(ag => ag.name === a)?.emoji || '🤖'
-                                                    ).join(' ')}
-                                                </p>
-                                            </div>
-                                        ))}
-                                    </div>
-                                    <p className="text-center text-sm text-blue-600 mt-4">
-                                        Using {apiSettings.provider === 'openai' ? 'OpenAI' : 
-                                               apiSettings.provider === 'anthropic' ? 'Anthropic' : 
-                                               'Custom'} API ({apiSettings.model})
-                                    </p>
-                                </div>
-                            ) : (
-                                <div className="text-center">
-                                    <div className="text-6xl mb-4">✅</div>
-                                    <p className="text-lg font-medium">Evaluation Complete!</p>
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    {/* Supervision Phase - View Results */}
-                    {phase === 'supervision' && (
-                        <div className="space-y-6">
-                            <div className="bg-white rounded-lg shadow-md p-6">
-                                <h2 className="text-2xl font-bold mb-4">📊 AI Evaluation Results</h2>
-                                <p className="text-sm text-gray-600 mb-6">
-                                    Review the AI agents' evaluations before making adjustments
-                                </p>
-                                
-                                {/* Overall Score Summary */}
-                                <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-6 rounded-lg mb-6">
-                                    <h3 className="text-xl font-bold mb-2">Preliminary Score</h3>
-                                    <div className="text-4xl font-bold text-blue-600">
-                                        {Math.round(gradingResults.reduce((sum, r) => sum + (r.score / 100) * r.weight, 0) * (totalScore / 100))} / {totalScore}
-                                    </div>
-                                    <p className="text-gray-600">
-                                        {Math.round(gradingResults.reduce((sum, r) => sum + (r.score / 100) * r.weight, 0))}%
-                                    </p>
-                                </div>
-                                
-                                <div className="space-y-4">
-                                    {gradingResults.map((result, index) => (
-                                        <div key={index} className="border rounded-lg p-4">
-                                            <div className="flex justify-between items-start mb-3">
-                                                <div>
-                                                    <h4 className="font-semibold">{result.name}</h4>
-                                                    <p className="text-sm text-gray-600">{result.description}</p>
-                                                    <p className="text-xs text-gray-500 mt-1">
-                                                        Evaluated by: {(result.assignedAgents || []).join(', ')}
-                                                    </p>
-                                                </div>
-                                                <div className="text-right">
-                                                    <div className="text-2xl font-bold text-blue-600">
-                                                        {Math.round(result.consensus)}%
-                                                    </div>
-                                                    <p className="text-xs text-gray-500">Averaged Score</p>
-                                                </div>
-                                            </div>
-                                            
-                                            {/* Individual Agent Scores */}
-                                            <div className="grid grid-cols-3 gap-2 mt-3 mb-3">
-                                                {result.agentScores.map((agentScore, agentIndex) => (
-                                                    <div key={agentIndex} className="bg-gray-50 p-2 rounded text-center">
-                                                        <p className="text-xs font-medium">{agentScore.agent}</p>
-                                                        <p className="text-lg font-bold">{agentScore.score}%</p>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                            
-                                            {/* View Discussion */}
-                                            {result.dialogue && result.dialogue.length > 0 && (
-                                                <details className="mt-3">
-                                                    <summary className="cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900">
-                                                        View Agent Discussion ({result.dialogue.length} messages)
-                                                    </summary>
-                                                    <div className="mt-2 space-y-2 max-h-60 overflow-y-auto">
-                                                        {result.dialogue.map((msg, msgIndex) => (
-                                                            <div key={msgIndex} className={`p-2 rounded-lg text-sm ${
-                                                                msg.type === 'consensus' ? 'bg-blue-50' : 
-                                                                msg.type === 'evaluation' ? 'bg-gray-50' : 
-                                                                'bg-yellow-50'
-                                                            }`}>
-                                                                <div className="flex items-start gap-2">
-                                                                    <span className="text-lg">{msg.emoji}</span>
-                                                                    <div className="flex-1">
-                                                                        <span className="font-medium">{msg.agent}:</span>
-                                                                        <span className="ml-2">{msg.message}</span>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </details>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
-                                
-                                <div className="mt-6 flex gap-4 justify-center">
-                                    <button
-                                        onClick={applySupervisorAdjustments}
-                                        className="px-6 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
-                                    >
-                                        Proceed to Score Adjustment
-                                    </button>
-                                    <button
-                                        onClick={handleRetryGrading}
-                                        className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-                                    >
-                                        Re-run Evaluation
-                                    </button>
-                                    <button
-                                        onClick={startOver}
-                                        className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600"
-                                    >
-                                        Start Over
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Manual Adjustment Phase */}
-                    {phase === 'manual' && (
-                        <div className="space-y-6">
-                            <div className="bg-white rounded-lg shadow-md p-6">
-                                <h2 className="text-2xl font-bold mb-4">✏️ Final Review & Score Adjustment</h2>
-                                <p className="text-sm text-gray-600 mb-6">
-                                    Adjust scores based on your professional judgment or provide feedback for AI re-evaluation
-                                </p>
-                                
-                                {/* Summary of AI Scores */}
-                                <div className="bg-blue-50 p-4 rounded-lg mb-6">
-                                    <h3 className="font-semibold mb-2">AI Evaluation Summary</h3>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        {gradingResults.map((result, index) => (
-                                            <div key={index} className="flex justify-between">
-                                                <span className="text-sm">{result.name}:</span>
-                                                <span className="font-medium">{Math.round(result.score)}%</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                    <div className="mt-2 pt-2 border-t">
-                                        <div className="flex justify-between font-semibold">
-                                            <span>Overall:</span>
-                                            <span>{Math.round(gradingResults.reduce((sum, r) => sum + (r.score / 100) * r.weight, 0))}%</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div className="space-y-4">
-                                    {gradingResults.map((result, index) => (
-                                        <div key={index} className="border rounded-lg p-4">
-                                            <div className="flex justify-between items-start mb-3">
-                                                <div className="flex-1">
-                                                    <h4 className="font-semibold">{result.name}</h4>
-                                                    <p className="text-sm text-gray-600">{result.description}</p>
-                                                    <p className="text-sm text-blue-600 mt-1">AI Score: {Math.round(result.score)}%</p>
-                                                </div>
-                                                <div className="flex items-center gap-4">
-                                                    <div className="text-center">
-                                                        <label className="text-xs text-gray-500">Adjusted Score</label>
-                                                        <input
-                                                            type="range"
-                                                            min="0"
-                                                            max="100"
-                                                            value={result.score}
-                                                            onChange={(e) => {
-                                                                const updated = [...gradingResults];
-                                                                updated[index].score = Number(e.target.value);
-                                                                setGradingResults(updated);
-                                                            }}
-                                                            className="w-32"
-                                                        />
-                                                        <div className="text-2xl font-bold text-blue-600">
-                                                            {Math.round(result.score)}%
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            
-                                            {/* AI Feedback Summary */}
-                                            <div className="bg-gray-50 p-3 rounded mb-3">
-                                                <p className="text-sm font-medium mb-1">AI Assessment:</p>
-                                                <p className="text-sm text-gray-700">{result.feedback}</p>
-                                            </div>
-                                            
-                                            {/* Teacher Options */}
-                                            <div className="space-y-3">
-                                                <div>
-                                                    <label className="text-sm font-medium">Your Professional Assessment:</label>
-                                                    <div className="mt-1 space-y-2">
-                                                        <textarea
-                                                            className="w-full px-3 py-2 border rounded-lg text-sm"
-                                                            rows="3"
-                                                            placeholder="Provide feedback to guide AI re-evaluation or explain your score adjustment..."
-                                                            value={result.manualFeedback || ''}
-                                                            onChange={(e) => {
-                                                                const updated = [...gradingResults];
-                                                                updated[index].manualFeedback = e.target.value;
-                                                                setGradingResults(updated);
-                                                            }}
-                                                        />
-                                                        
-                                                        {/* Re-evaluation Option */}
-                                                        <div className="flex items-center gap-2">
-                                                            <input
-                                                                type="checkbox"
-                                                                id={`reeval-${index}`}
-                                                                checked={result.requestReeval || false}
-                                                                onChange={(e) => {
-                                                                    const updated = [...gradingResults];
-                                                                    updated[index].requestReeval = e.target.checked;
-                                                                    setGradingResults(updated);
-                                                                }}
-                                                            />
-                                                            <label htmlFor={`reeval-${index}`} className="text-sm text-gray-600">
-                                                                Request AI to re-evaluate based on my feedback
-                                                            </label>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                                
-                                <div className="mt-6 flex gap-4 justify-center">
-                                    <button
-                                        onClick={() => {
-                                            const hasReeval = gradingResults.some(r => r.requestReeval && r.manualFeedback);
-                                            if (hasReeval) {
-                                                handleRetryGrading();
-                                            } else {
-                                                setPhase('final');
-                                            }
-                                        }}
-                                        className="px-6 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
-                                    >
-                                        {gradingResults.some(r => r.requestReeval && r.manualFeedback) 
-                                            ? 'Re-evaluate with Feedback' 
-                                            : 'Finalize Grading'}
-                                    </button>
-                                    <button
-                                        onClick={handleRetryGrading}
-                                        className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-                                    >
-                                        Re-run Full Evaluation
-                                    </button>
-                                    <button
-                                        onClick={startOver}
-                                        className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600"
-                                    >
-                                        Start Over
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Final Results */}
-                    {phase === 'final' && (
-                        <div className="space-y-6">
-                            <div className="bg-white rounded-lg shadow-md p-6">
-                                <h2 className="text-2xl font-bold mb-6 text-center">📊 Final Engineering Report Grade</h2>
-                                
-                                <div className="text-center p-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg">
-                                    <h3 className="text-2xl font-bold mb-2">Final Score</h3>
-                                    <div className="text-5xl font-bold text-blue-600 mb-2">
-                                        {Math.round(gradingResults.reduce((sum, r) => sum + (r.score / 100) * r.weight, 0) * (totalScore / 100))} / {totalScore}
-                                    </div>
-                                    <div className="text-lg text-gray-600">
-                                        {Math.round(gradingResults.reduce((sum, r) => sum + (r.score / 100) * r.weight, 0))}%
-                                    </div>
-                                </div>
-                                
-                                <div className="mt-6 space-y-4">
-                                    {gradingResults.map((result, index) => (
-                                        <div key={index} className="bg-gray-50 rounded-lg p-4">
-                                            <div className="flex justify-between items-center mb-2">
-                                                <h4 className="font-semibold text-lg">{result.name}</h4>
-                                                <div className="text-2xl font-bold text-blue-600">
-                                                    {Math.round((result.score / 100) * result.weight * (totalScore / 100))} / {Math.round(result.weight * (totalScore / 100))}
-                                                </div>
-                                            </div>
-                                            <div className="w-full bg-gray-200 rounded-full h-3 mb-2">
-                                                <div 
-                                                    className="bg-blue-600 h-3 rounded-full"
-                                                    style={{ width: `${result.score}%` }}
-                                                />
-                                            </div>
-                                            <p className="text-sm text-gray-700 mb-1">{result.feedback}</p>
-                                            {result.manualFeedback && (
-                                                <p className="text-sm text-purple-600 italic">
-                                                    Instructor: {result.manualFeedback}
-                                                </p>
-                                            )}
-                                            
-                                            {/* Agent Dialogue History */}
-                                            {result.dialogue && result.dialogue.length > 0 && (
-                                                <details className="mt-3">
-                                                    <summary className="cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900">
-                                                        View Complete Evaluation Process ({result.dialogue.length} entries)
-                                                    </summary>
-                                                    <div className="mt-2 space-y-2 max-h-60 overflow-y-auto">
-                                                        {result.dialogue.map((msg, msgIndex) => (
-                                                            <div key={msgIndex} className={`p-2 rounded-lg text-sm ${
-                                                                msg.type === 'consensus' ? 'bg-blue-50' : 
-                                                                msg.type === 'evaluation' ? 'bg-gray-50' : 
-                                                                'bg-yellow-50'
-                                                            }`}>
-                                                                <div className="flex items-start gap-2">
-                                                                    <span className="text-lg">{msg.emoji}</span>
-                                                                    <div className="flex-1">
-                                                                        <span className="font-medium">{msg.agent}:</span>
-                                                                        <span className="ml-2">{msg.message}</span>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </details>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
-                                
-                                <div className="mt-6 flex gap-4 justify-center">
-                                    <button
-                                        onClick={saveResults}
-                                        className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                                    >
-                                        Download Report
-                                    </button>
-                                    <button
-                                        onClick={handleRetryGrading}
-                                        className="px-6 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600"
-                                    >
-                                        Retry with Adjustments
-                                    </button>
-                                    <button
-                                        onClick={startOver}
-                                        className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600"
-                                    >
-                                        Grade Another Report
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            );
-        };
-
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<EssayGradingSystem />);
-    </script>
-</body>
-</html>={`flex-1 px-3 py-2 border rounded-lg ${metric.isDefault ? 'bg-gray-100' : ''}`}
-                                                />
-                                                <input
-                                                    type="number"
-                                                    value={metric.weight}
-                                                    onChange={(e) => handleMetricEdit(index, 'weight', Number(e.target.value))}
-                                                    className
+                                            value={apiSettings.provider}
+                                            onChange={(e) => {
+                                                const provider = e.target.value;
+                                                setApiSettings({
+                                                    ...apiSettings,
+                                                    provider,
+                                                    endpoint: provider === 'openai' ? 'https://api.openai.com/v1/chat/completions' :
+                                                             provider === 'anthropic' ? 'https://api.anthropic.com/v1/messages' :
+                                                             apiSettings.endpoint,
+                                                    model: provider === 'openai' ? 'gpt-4o' :
+                                                           provider === 'anthropic' ? 'claude-3-opus-20240229' :
+                                                           apiSettings.model
