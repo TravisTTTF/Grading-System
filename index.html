@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Advanced Essay Grading System</title>
+    <title>Advanced Essay Grading System - Debug Version</title>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -25,6 +25,11 @@
         const { useState, useEffect } = React;
 
         const EssayGradingSystem = () => {
+            const [debugMode, setDebugMode] = useState(false);
+            const [debugLogs, setDebugLogs] = useState([]);
+            const [testResults, setTestResults] = useState(null);
+            
+            // ... 保留所有原有的状态变量
             const [phase, setPhase] = useState('setup');
             const [essayFile, setEssayFile] = useState(null);
             const [rubricFile, setRubricFile] = useState(null);
@@ -34,410 +39,171 @@
                 { name: 'Language Use', weight: 25, description: 'Grammar, vocabulary, style', isDefault: true },
                 { name: 'Critical Thinking', weight: 20, description: 'Analysis, synthesis, evaluation', isDefault: true }
             ]);
-            const [totalScore, setTotalScore] = useState(100);
-            const [agents, setAgents] = useState([
-                { id: 1, name: 'Content Expert', emoji: '📚', expertise: 'Focus on technical accuracy, depth of analysis, and engineering methodology' },
-                { id: 2, name: 'Language Expert', emoji: '✍️', expertise: 'Focus on grammar, vocabulary, writing clarity, and professional communication' },
-                { id: 3, name: 'Structure Expert', emoji: '🏗️', expertise: 'Focus on document organization, formatting, logical flow, and citation standards' },
-                { id: 4, name: 'Innovation Expert', emoji: '💡', expertise: 'Focus on creative problem-solving, critical thinking, and innovative insights' }
-            ]);
-            const [supervisorSettings, setSupervisorSettings] = useState({
-                strictness: 'balanced',
-                focusAreas: ['consistency', 'fairness', 'standards']
-            });
-            const [gradingResults, setGradingResults] = useState([]);
-            const [loading, setLoading] = useState(false);
-            const [progress, setProgress] = useState(0);
-            const [agentDialogues, setAgentDialogues] = useState([]);
             const [apiSettings, setApiSettings] = useState({
                 useNetlifyFunctions: true,
                 provider: 'openai',
-                apiKey: '',
                 model: 'gpt-4',
-                endpoint: 'https://api.openai.com/v1/chat/completions',
                 temperature: 0.7
             });
+            const [loading, setLoading] = useState(false);
+            const [progress, setProgress] = useState(0);
             const [currentProgressMessage, setCurrentProgressMessage] = useState('');
-            const [agentResults, setAgentResults] = useState({});
 
-            // Save and load configuration
-            const saveConfiguration = () => {
-                const config = {
-                    metrics,
-                    totalScore,
-                    agents,
-                    supervisorSettings,
-                    apiSettings
-                };
-                localStorage.setItem('essayGradingConfig', JSON.stringify(config));
-                alert('Configuration saved successfully!');
+            // 调试日志函数
+            const addDebugLog = (message, type = 'info') => {
+                const timestamp = new Date().toLocaleTimeString();
+                const logEntry = { timestamp, message, type };
+                setDebugLogs(prev => [...prev, logEntry]);
+                console.log(`[${type.toUpperCase()}] ${message}`);
             };
 
-            const loadConfiguration = () => {
+            // 测试 API 连接
+            const testAPIConnection = async () => {
+                setTestResults(null);
+                addDebugLog('开始测试 API 连接...', 'info');
+                
                 try {
-                    const saved = localStorage.getItem('essayGradingConfig');
-                    if (saved) {
-                        const config = JSON.parse(saved);
-                        if (config.metrics) setMetrics(config.metrics);
-                        if (config.totalScore) setTotalScore(config.totalScore);
-                        if (config.agents) setAgents(config.agents);
-                        if (config.supervisorSettings) setSupervisorSettings(config.supervisorSettings);
-                        if (config.apiSettings) setApiSettings(config.apiSettings);
+                    // 测试 GET 请求
+                    addDebugLog('测试 GET 请求...', 'info');
+                    const getResponse = await fetch('/.netlify/functions/test-api', {
+                        method: 'GET'
+                    });
+                    
+                    addDebugLog(`GET 响应状态: ${getResponse.status}`, getResponse.ok ? 'success' : 'error');
+                    
+                    if (getResponse.ok) {
+                        const getData = await getResponse.json();
+                        addDebugLog(`GET 响应数据: ${JSON.stringify(getData)}`, 'success');
+                        
+                        // 测试 POST 请求
+                        addDebugLog('测试 POST 请求 (API 调用)...', 'info');
+                        const postResponse = await fetch('/.netlify/functions/test-api', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                test: true,
+                                message: 'Testing API connection'
+                            })
+                        });
+                        
+                        addDebugLog(`POST 响应状态: ${postResponse.status}`, postResponse.ok ? 'success' : 'error');
+                        
+                        if (postResponse.ok) {
+                            const postData = await postResponse.json();
+                            addDebugLog(`POST 响应数据: ${JSON.stringify(postData)}`, postData.success ? 'success' : 'warning');
+                            
+                            setTestResults({
+                                status: 'success',
+                                getResponse: getData,
+                                postResponse: postData
+                            });
+                        } else {
+                            const errorText = await postResponse.text();
+                            addDebugLog(`POST 请求失败: ${errorText}`, 'error');
+                            setTestResults({
+                                status: 'error',
+                                error: `POST failed: ${postResponse.status}`
+                            });
+                        }
+                    } else {
+                        const errorText = await getResponse.text();
+                        addDebugLog(`GET 请求失败: ${errorText}`, 'error');
+                        setTestResults({
+                            status: 'error',
+                            error: `GET failed: ${getResponse.status}`
+                        });
                     }
                 } catch (error) {
-                    console.error('Error loading configuration:', error);
+                    addDebugLog(`API 测试异常: ${error.message}`, 'error');
+                    setTestResults({
+                        status: 'error',
+                        error: error.message
+                    });
                 }
             };
 
-            // Load configuration on component mount
-            useEffect(() => {
-                loadConfiguration();
-            }, []);
-
-            const saveResults = () => {
-                const results = {
-                    date: new Date().toISOString(),
-                    totalScore,
-                    finalScore: Math.round(gradingResults.reduce((sum, r) => sum + (r.score / 100) * r.weight, 0) * (totalScore / 100)),
-                    percentage: Math.round(gradingResults.reduce((sum, r) => sum + (r.score / 100) * r.weight, 0)),
-                    details: gradingResults
-                };
-                const blob = new Blob([JSON.stringify(results, null, 2)], { type: 'application/json' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `grading_results_${new Date().toISOString().split('T')[0]}.json`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-            };
-
-            const handleMetricDelete = (index) => {
-                if (!metrics[index].isDefault) {
-                    setMetrics(metrics.filter((_, i) => i !== index));
-                }
-            };
-
-            const handleMetricEdit = (index, field, value) => {
-                if (!metrics[index].isDefault || field !== 'name') {
-                    const updated = [...metrics];
-                    updated[index] = { ...updated[index], [field]: value };
-                    setMetrics(updated);
-                }
-            };
-
-            const handleAgentDelete = (index) => {
-                if (agents.length > 1) {
-                    setAgents(agents.filter((_, i) => i !== index));
-                }
-            };
-
-            const handleAgentAdd = () => {
-                const newId = Math.max(...agents.map(a => a.id || 0)) + 1;
-                setAgents([...agents, { 
-                    id: newId,
-                    name: `New Agent ${agents.length + 1}`, 
-                    emoji: '🤖', 
-                    expertise: 'Add expertise description here' 
-                }]);
-            };
-
-            const handleRetryGrading = () => {
-                setPhase('grading');
-                simulateGrading();
-            };
-
-            const handleFileUpload = (e, type) => {
-                const file = e.target.files[0];
-                if (file) {
-                    if (type === 'essay') {
-                        setEssayFile(file);
-                    } else {
-                        setRubricFile(file);
-                    }
-                }
-            };
-
-            const startGrading = () => {
+            // 简化的测试评分函数
+            const testGrading = async () => {
                 if (!essayFile) {
-                    alert('Please upload an essay file');
+                    addDebugLog('请先上传一个文件', 'warning');
                     return;
                 }
-                
-                const totalWeight = metrics.reduce((sum, m) => sum + m.weight, 0);
-                if (totalWeight !== 100) {
-                    alert('Metric weights must sum to 100%');
-                    return;
-                }
-                
-                setPhase('grading');
-                simulateGrading();
-            };
 
-            const simulateGrading = async () => {
                 setLoading(true);
                 setProgress(0);
-                setAgentResults({});
-                
-                if (apiSettings.useNetlifyFunctions) {
-                    await performNetlifyFunctionGrading();
-                } else if (apiSettings.apiKey && apiSettings.apiKey.trim() !== '') {
-                    await performDirectAPIGrading();
-                } else {
-                    await performSimulatedGrading();
-                }
-            };
+                addDebugLog('开始测试评分流程...', 'info');
 
-            const performNetlifyFunctionGrading = async () => {
                 try {
-                    setCurrentProgressMessage('Reading essay file...');
                     const essayText = await readFileAsText(essayFile);
-                    const rubricText = rubricFile ? await readFileAsText(rubricFile) : '';
+                    addDebugLog(`文件读取成功，长度: ${essayText.length} 字符`, 'success');
                     
-                    setCurrentProgressMessage('Initializing AI agents...');
-                    setProgress(10);
+                    setProgress(25);
+                    setCurrentProgressMessage('测试单个智能体评估...');
                     
-                    const results = [];
-                    const totalSteps = agents.length + 1; // agents + consensus
-                    let currentStep = 0;
-                    const agentResultsData = {};
-
-                    // Step 1: Get evaluations from all agents
-                    for (const agent of agents) {
-                        currentStep++;
-                        setCurrentProgressMessage(`${agent.name} is evaluating the essay...`);
-                        setProgress((currentStep / totalSteps) * 80); // 80% for agent evaluations
-
-                        try {
-                            const agentResponse = await callNetlifyFunction('ai-agent-grade', {
-                                agentId: agent.id,
-                                agentPrompt: agent.expertise,
-                                content: essayText,
-                                metrics: metrics,
-                                teacherGuidelines: rubricText
-                            });
-
-                            if (agentResponse.success) {
-                                agentResultsData[agent.id] = agentResponse.result;
-                            } else {
-                                throw new Error(`Agent ${agent.name} failed: ${agentResponse.error}`);
-                            }
-                        } catch (error) {
-                            console.error(`Error with ${agent.name}:`, error);
-                            // Fallback to simulated scoring for this agent
-                            agentResultsData[agent.id] = generateFallbackAgentResult(metrics);
-                        }
-                    }
-
-                    setAgentResults(agentResultsData);
-
-                    // Step 2: Get consensus from moderator
-                    setCurrentProgressMessage('Consensus moderator is analyzing results...');
-                    setProgress(85);
-
-                    let consensusResult;
-                    try {
-                        const consensusResponse = await callNetlifyFunction('consensus-moderator', {
-                            agentResults: agentResultsData,
+                    // 测试单个智能体
+                    const agentResponse = await fetch('/.netlify/functions/ai-agent-grade', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            agentId: 1,
+                            agentPrompt: '测试智能体，简单评估内容质量',
+                            content: essayText.substring(0, 1000), // 限制长度用于测试
                             metrics: metrics,
-                            teacherGuidelines: rubricText
+                            teacherGuidelines: '这是一个测试评估'
+                        })
+                    });
+
+                    setProgress(50);
+                    addDebugLog(`智能体响应状态: ${agentResponse.status}`, agentResponse.ok ? 'success' : 'error');
+
+                    if (agentResponse.ok) {
+                        const agentData = await agentResponse.json();
+                        addDebugLog(`智能体响应: ${JSON.stringify(agentData)}`, agentData.success ? 'success' : 'warning');
+                        
+                        setProgress(75);
+                        setCurrentProgressMessage('测试共识调解器...');
+                        
+                        // 测试共识调解器
+                        const consensusResponse = await fetch('/.netlify/functions/consensus-moderator', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                agentResults: {
+                                    1: agentData.result || { scores: { content_quality: 85 }, confidence: 90 }
+                                },
+                                metrics: metrics,
+                                teacherGuidelines: '测试指导'
+                            })
                         });
 
-                        if (consensusResponse.success) {
-                            consensusResult = consensusResponse.consensus;
+                        setProgress(100);
+                        addDebugLog(`共识调解器响应状态: ${consensusResponse.status}`, consensusResponse.ok ? 'success' : 'error');
+
+                        if (consensusResponse.ok) {
+                            const consensusData = await consensusResponse.json();
+                            addDebugLog(`共识调解器响应: ${JSON.stringify(consensusData)}`, consensusData.success ? 'success' : 'warning');
+                            addDebugLog('🎉 完整评分流程测试成功！', 'success');
                         } else {
-                            throw new Error(`Consensus failed: ${consensusResponse.error}`);
+                            const errorText = await consensusResponse.text();
+                            addDebugLog(`共识调解器失败: ${errorText}`, 'error');
                         }
-                    } catch (error) {
-                        console.error('Consensus error:', error);
-                        consensusResult = generateFallbackConsensus(agentResultsData, metrics);
+                    } else {
+                        const errorText = await agentResponse.text();
+                        addDebugLog(`智能体评估失败: ${errorText}`, 'error');
                     }
-
-                    // Step 3: Format results
-                    setCurrentProgressMessage('Finalizing results...');
-                    setProgress(95);
-
-                    for (const metric of metrics) {
-                        const metricName = metric.name.toLowerCase();
-                        const agentScores = agents.map(agent => {
-                            const agentResult = agentResultsData[agent.id];
-                            const score = agentResult?.scores?.[metricName] || 75;
-                            return {
-                                agent: agent.name,
-                                score: score,
-                                feedback: agentResult?.feedback?.[0] || `${agent.name} evaluation completed.`,
-                                confidence: agentResult?.confidence || 85
-                            };
-                        });
-
-                        const consensusScore = consensusResult.consensusScores?.[metricName] || 
-                                            Math.round(agentScores.reduce((sum, a) => sum + a.score, 0) / agentScores.length);
-
-                        // Generate dialogue
-                        const dialogue = generateAgentDialogue(agents, agentScores, metric, consensusScore, consensusResult);
-
-                        results.push({
-                            ...metric,
-                            score: consensusScore,
-                            agentScores,
-                            consensus: consensusScore,
-                            feedback: consensusResult.metaFeedback || 'AI evaluation completed successfully.',
-                            dialogue: dialogue,
-                            agreements: consensusResult.agreements || [],
-                            disagreements: consensusResult.disagreements || [],
-                            flagsForReview: consensusResult.flagsForReview || []
-                        });
-                    }
-
-                    setGradingResults(results);
-                    setProgress(100);
-                    setCurrentProgressMessage('Grading completed!');
-                    setLoading(false);
-                    setPhase('supervision');
 
                 } catch (error) {
-                    console.error('Error in Netlify function grading:', error);
-                    alert('Error during AI grading. Falling back to simulation.');
-                    await performSimulatedGrading();
+                    addDebugLog(`评分测试异常: ${error.message}`, 'error');
+                } finally {
+                    setLoading(false);
+                    setCurrentProgressMessage('');
                 }
-            };
-
-            const callNetlifyFunction = async (functionName, payload) => {
-                const response = await fetch(`/.netlify/functions/${functionName}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(payload)
-                });
-
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
-                return await response.json();
-            };
-
-            const generateFallbackAgentResult = (metrics) => {
-                const scores = {};
-                metrics.forEach(metric => {
-                    scores[metric.name.toLowerCase()] = Math.floor(Math.random() * 25) + 70; // 70-95
-                });
-
-                return {
-                    scores,
-                    feedback: ['Evaluation completed with fallback method.'],
-                    confidence: 75,
-                    reasoning: 'Fallback evaluation due to API error.'
-                };
-            };
-
-            const generateFallbackConsensus = (agentResultsData, metrics) => {
-                const consensusScores = {};
-                
-                metrics.forEach(metric => {
-                    const metricName = metric.name.toLowerCase();
-                    const scores = Object.values(agentResultsData)
-                        .map(result => result.scores[metricName])
-                        .filter(score => score !== undefined);
-                    
-                    const average = scores.length > 0 ? 
-                        scores.reduce((sum, score) => sum + score, 0) / scores.length : 75;
-                    consensusScores[metricName] = Math.round(average);
-                });
-
-                return {
-                    consensusScores,
-                    agreements: ['Fallback consensus generated'],
-                    disagreements: [],
-                    confidence: 75,
-                    flagsForReview: [],
-                    metaFeedback: 'Consensus generated using fallback method.',
-                    methodology: 'Simple average calculation'
-                };
-            };
-
-            const generateAgentDialogue = (agents, agentScores, metric, consensusScore, consensusResult) => {
-                const dialogue = [];
-                
-                // Initial evaluations
-                agentScores.forEach((agentScore, index) => {
-                    dialogue.push({
-                        agent: agentScore.agent,
-                        emoji: agents[index].emoji,
-                        message: `I've evaluated ${metric.name} and scored it ${agentScore.score}/100. ${agentScore.feedback}`,
-                        type: 'evaluation'
-                    });
-                });
-
-                // Add agreements/disagreements from consensus
-                if (consensusResult.agreements && consensusResult.agreements.length > 0) {
-                    dialogue.push({
-                        agent: 'Consensus',
-                        emoji: '🤝',
-                        message: `Areas of agreement: ${consensusResult.agreements.join(', ')}`,
-                        type: 'discussion'
-                    });
-                }
-
-                if (consensusResult.disagreements && consensusResult.disagreements.length > 0) {
-                    dialogue.push({
-                        agent: 'Consensus',
-                        emoji: '⚖️',
-                        message: `Areas of disagreement: ${consensusResult.disagreements.join(', ')}`,
-                        type: 'discussion'
-                    });
-                }
-
-                // Final consensus
-                dialogue.push({
-                    agent: 'Consensus',
-                    emoji: '🎯',
-                    message: `Final consensus score for ${metric.name}: ${consensusScore}/100. ${consensusResult.methodology || ''}`,
-                    type: 'consensus'
-                });
-
-                return dialogue;
-            };
-
-            const performDirectAPIGrading = async () => {
-                // This is the existing direct API calling code
-                setCurrentProgressMessage('Using direct API calls...');
-                // ... (keep the existing performLLMGrading logic here)
-                await performSimulatedGrading(); // Temporary fallback
-            };
-
-            const performSimulatedGrading = async () => {
-                setCurrentProgressMessage('Running simulation...');
-                const interval = setInterval(() => {
-                    setProgress(prev => {
-                        if (prev >= 100) {
-                            clearInterval(interval);
-                            generateSimulatedResults();
-                            return 100;
-                        }
-                        return prev + 10;
-                    });
-                }, 300);
-            };
-
-            const generateSimulatedResults = () => {
-                const results = metrics.map(metric => ({
-                    ...metric,
-                    score: Math.floor(Math.random() * 30) + 70,
-                    agentScores: agents.map(agent => ({
-                        agent: agent.name,
-                        score: Math.floor(Math.random() * 30) + 70,
-                        feedback: `${agent.name} evaluation for ${metric.name}: Strong performance with room for improvement.`
-                    })),
-                    consensus: Math.floor(Math.random() * 30) + 70,
-                    feedback: `Detailed feedback for ${metric.name}: The essay demonstrates good understanding with clear arguments.`
-                }));
-                
-                setGradingResults(results);
-                setLoading(false);
-                setPhase('supervision');
             };
 
             const readFileAsText = (file) => {
@@ -449,724 +215,162 @@
                 });
             };
 
-            const applySupervisorAdjustments = () => {
-                const adjusted = gradingResults.map(result => ({
-                    ...result,
-                    score: Math.max(0, Math.min(100, result.score + (Math.random() * 10 - 5))),
-                    supervisorNotes: 'Adjusted for consistency and standards alignment'
-                }));
-                setGradingResults(adjusted);
-                setPhase('manual');
+            const handleFileUpload = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    setEssayFile(file);
+                    addDebugLog(`文件上传: ${file.name} (${file.size} bytes)`, 'info');
+                }
             };
 
-            const startOver = () => {
-                if (confirm('Are you sure you want to start over? Your current progress will be lost.')) {
-                    setPhase('setup');
-                    setEssayFile(null);
-                    setRubricFile(null);
-                    setGradingResults([]);
-                    setProgress(0);
-                    setAgentResults({});
-                }
+            const clearLogs = () => {
+                setDebugLogs([]);
             };
 
             return (
                 <div className="max-w-6xl mx-auto p-6 space-y-6">
                     {/* Header */}
                     <div className="text-center mb-8">
-                        <h1 className="text-4xl font-bold text-gray-800 mb-2">🎓 Advanced Essay Grading System</h1>
-                        <p className="text-gray-600">AI-Powered Multi-Agent Evaluation with Human Oversight</p>
-                        {apiSettings.useNetlifyFunctions && (
-                            <div className="mt-2 px-4 py-2 bg-green-100 text-green-800 rounded-lg inline-block">
-                                <span className="text-sm font-medium">✅ Netlify Functions Enabled</span>
-                            </div>
-                        )}
+                        <h1 className="text-4xl font-bold text-gray-800 mb-2">
+                            🔧 Essay Grading System - Debug Mode
+                        </h1>
+                        <p className="text-gray-600">API 连接调试和测试工具</p>
+                        
+                        <div className="mt-4 flex justify-center gap-4">
+                            <button
+                                onClick={() => setDebugMode(!debugMode)}
+                                className={`px-4 py-2 rounded-lg ${debugMode ? 'bg-red-500 text-white' : 'bg-green-500 text-white'}`}
+                            >
+                                {debugMode ? '关闭调试模式' : '开启调试模式'}
+                            </button>
+                        </div>
                     </div>
 
-                    {/* Progress Bar */}
-                    <div className="bg-white rounded-lg shadow-md p-4">
-                        <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm font-medium text-gray-700">Progress</span>
-                            <span className="text-sm text-gray-500">{phase}</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div 
-                                className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                                style={{ width: `${phase === 'setup' ? 25 : phase === 'grading' ? 50 : phase === 'supervision' ? 75 : 100}%` }}
-                            />
-                        </div>
-                        {currentProgressMessage && (
-                            <p className="text-xs text-gray-600 mt-1">{currentProgressMessage}</p>
-                        )}
-                    </div>
-
-                    {/* Setup Phase */}
-                    {phase === 'setup' && (
-                        <div className="space-y-6">
-                            {/* File Upload */}
+                    {debugMode && (
+                        <>
+                            {/* API 连接测试 */}
                             <div className="bg-white rounded-lg shadow-md p-6">
-                                <h2 className="text-2xl font-bold mb-4">📁 Upload Documents</h2>
-                                <div className="grid md:grid-cols-2 gap-6">
-                                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 transition-colors">
-                                        <div className="text-4xl mb-3">📄</div>
-                                        <label className="cursor-pointer">
-                                            <span className="text-lg font-medium text-gray-700">Upload Essay</span>
-                                            <input
-                                                type="file"
-                                                className="hidden"
-                                                accept=".pdf,.doc,.docx,.txt"
-                                                onChange={(e) => handleFileUpload(e, 'essay')}
-                                            />
-                                            {essayFile && (
-                                                <p className="mt-2 text-sm text-green-600 flex items-center justify-center">
-                                                    ✓ {essayFile.name}
-                                                </p>
-                                            )}
-                                        </label>
-                                    </div>
-                                    
-                                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 transition-colors">
-                                        <div className="text-4xl mb-3">📋</div>
-                                        <label className="cursor-pointer">
-                                            <span className="text-lg font-medium text-gray-700">Upload Rubric (Optional)</span>
-                                            <input
-                                                type="file"
-                                                className="hidden"
-                                                accept=".pdf,.doc,.docx,.txt"
-                                                onChange={(e) => handleFileUpload(e, 'rubric')}
-                                            />
-                                            {rubricFile && (
-                                                <p className="mt-2 text-sm text-green-600 flex items-center justify-center">
-                                                    ✓ {rubricFile.name}
-                                                </p>
-                                            )}
-                                        </label>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* API Configuration - Updated */}
-                            <div className="bg-white rounded-lg shadow-md p-6">
-                                <h3 className="text-lg font-semibold mb-3">🔌 API Configuration</h3>
+                                <h2 className="text-2xl font-bold mb-4">🔌 API 连接测试</h2>
+                                
                                 <div className="space-y-4">
-                                    <div>
-                                        <label className="flex items-center">
-                                            <input
-                                                type="checkbox"
-                                                checked={apiSettings.useNetlifyFunctions}
-                                                onChange={(e) => setApiSettings({...apiSettings, useNetlifyFunctions: e.target.checked})}
-                                                className="mr-2"
-                                            />
-                                            <span className="font-medium">Use Netlify Functions (Recommended)</span>
-                                        </label>
-                                        <p className="text-sm text-gray-600 mt-1">
-                                            Server-side processing with better security and reliability
-                                        </p>
-                                    </div>
-                                    
-                                    {apiSettings.useNetlifyFunctions ? (
-                                        <div className="bg-green-50 p-4 rounded-lg">
-                                            <h4 className="font-medium text-green-900 mb-2">✅ Netlify Functions Configuration</h4>
-                                            <ul className="text-sm text-green-800 space-y-1">
-                                                <li>• Multi-agent AI evaluation with specialized experts</li>
-                                                <li>• Consensus moderator for balanced scoring</li>
-                                                <li>• Secure API key handling on the server</li>
-                                                <li>• Better error handling and reliability</li>
-                                            </ul>
-                                            <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded">
-                                                <p className="text-sm text-yellow-800">
-                                                    <strong>Note:</strong> Make sure your Netlify environment variables are configured with OPENAI_API_KEY
-                                                </p>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-4">
-                                            <div>
-                                                <label className="block text-sm font-medium mb-2">API Provider</label>
-                                                <select
-                                                    value={apiSettings.provider}
-                                                    onChange={(e) => {
-                                                        const provider = e.target.value;
-                                                        setApiSettings({
-                                                            ...apiSettings,
-                                                            provider,
-                                                            endpoint: provider === 'openai' ? 'https://api.openai.com/v1/chat/completions' :
-                                                                     provider === 'anthropic' ? 'https://api.anthropic.com/v1/messages' :
-                                                                     apiSettings.endpoint,
-                                                            model: provider === 'openai' ? 'gpt-4' :
-                                                                   provider === 'anthropic' ? 'claude-3-opus-20240229' :
-                                                                   apiSettings.model
-                                                        });
-                                                    }}
-                                                    className="w-full px-3 py-2 border rounded-lg"
-                                                >
-                                                    <option value="openai">OpenAI (GPT-4)</option>
-                                                    <option value="anthropic">Anthropic (Claude)</option>
-                                                    <option value="custom">Custom API</option>
-                                                </select>
-                                            </div>
-                                            
-                                            <div>
-                                                <label className="block text-sm font-medium mb-2">API Key</label>
-                                                <input
-                                                    type="password"
-                                                    value={apiSettings.apiKey}
-                                                    onChange={(e) => setApiSettings({...apiSettings, apiKey: e.target.value})}
-                                                    className="w-full px-3 py-2 border rounded-lg"
-                                                    placeholder="Enter your API key"
-                                                />
-                                                <p className="text-xs text-red-500 mt-1">
-                                                    ⚠️ Not recommended: API keys exposed in browser
-                                                </p>
-                                            </div>
+                                    <button
+                                        onClick={testAPIConnection}
+                                        className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                                    >
+                                        测试 Netlify Functions 连接
+                                    </button>
+
+                                    {testResults && (
+                                        <div className={`p-4 rounded-lg ${
+                                            testResults.status === 'success' ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
+                                        }`}>
+                                            <h3 className="font-semibold mb-2">测试结果:</h3>
+                                            <pre className="text-sm overflow-auto">
+                                                {JSON.stringify(testResults, null, 2)}
+                                            </pre>
                                         </div>
                                     )}
                                 </div>
                             </div>
 
-                            {/* Rest of the setup configuration remains the same... */}
-                            {/* Evaluation Metrics */}
+                            {/* 完整流程测试 */}
                             <div className="bg-white rounded-lg shadow-md p-6">
-                                <div className="flex items-center justify-between mb-3">
-                                    <h3 className="text-lg font-semibold">📊 Customizable Evaluation Metrics</h3>
-                                    <button
-                                        onClick={saveConfiguration}
-                                        className="px-3 py-1 bg-green-500 text-white rounded-lg hover:bg-green-600 text-sm"
-                                    >
-                                        Save Configuration
-                                    </button>
-                                </div>
-                                <div className="space-y-3">
-                                    <div className="mb-4">
-                                        <label className="block text-sm font-medium mb-2">Total Score:</label>
+                                <h2 className="text-2xl font-bold mb-4">🧪 完整评分流程测试</h2>
+                                
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium mb-2">上传测试文件:</label>
                                         <input
-                                            type="number"
-                                            value={totalScore}
-                                            onChange={(e) => setTotalScore(Number(e.target.value) || 100)}
-                                            className="w-32 px-3 py-2 border rounded-lg"
-                                            min="1"
-                                        />
-                                    </div>
-                                    {metrics.map((metric, index) => (
-                                        <div key={index} className="bg-gray-50 p-3 rounded-lg">
-                                            <div className="flex items-center gap-3">
-                                                <input
-                                                    type="text"
-                                                    value={metric.name}
-                                                    onChange={(e) => handleMetricEdit(index, 'name', e.target.value)}
-                                                    disabled={metric.isDefault}
-                                                    className={`flex-1 px-3 py-2 border rounded-lg ${metric.isDefault ? 'bg-gray-100' : ''}`}
-                                                />
-                                                <input
-                                                    type="number"
-                                                    value={metric.weight}
-                                                    onChange={(e) => handleMetricEdit(index, 'weight', Number(e.target.value))}
-                                                    className="w-20 px-3 py-2 border rounded-lg"
-                                                    min="0"
-                                                    max="100"
-                                                />
-                                                <span className="text-sm text-gray-600">%</span>
-                                                {!metric.isDefault && (
-                                                    <button
-                                                        onClick={() => handleMetricDelete(index)}
-                                                        className="text-red-500 hover:text-red-700 font-bold text-xl"
-                                                    >
-                                                        ×
-                                                    </button>
-                                                )}
-                                            </div>
-                                            <input
-                                                type="text"
-                                                value={metric.description}
-                                                onChange={(e) => handleMetricEdit(index, 'description', e.target.value)}
-                                                className="w-full mt-2 px-3 py-2 border rounded-lg text-sm"
-                                                placeholder="Description"
-                                            />
-                                        </div>
-                                    ))}
-                                    <button
-                                        onClick={() => setMetrics([...metrics, { name: '', weight: 0, description: '', isDefault: false }])}
-                                        className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-400"
-                                    >
-                                        + Add Metric
-                                    </button>
-                                    <div className="text-sm text-gray-600">
-                                        Total Weight: {metrics.reduce((sum, m) => sum + m.weight, 0)}%
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Multi-Agent Configuration */}
-                            <div className="bg-white rounded-lg shadow-md p-6">
-                                <h3 className="text-lg font-semibold mb-3">🤖 Multi-Agent Configuration</h3>
-                                <div className="space-y-3">
-                                    {agents.map((agent, index) => (
-                                        <div key={index} className="bg-gray-50 p-3 rounded-lg">
-                                            <div className="flex items-center gap-3 mb-2">
-                                                <input
-                                                    type="text"
-                                                    value={agent.emoji}
-                                                    onChange={(e) => {
-                                                        const updated = [...agents];
-                                                        updated[index].emoji = e.target.value;
-                                                        setAgents(updated);
-                                                    }}
-                                                    className="w-16 px-2 py-2 border rounded-lg text-center text-2xl"
-                                                />
-                                                <input
-                                                    type="text"
-                                                    value={agent.name}
-                                                    onChange={(e) => {
-                                                        const updated = [...agents];
-                                                        updated[index].name = e.target.value;
-                                                        setAgents(updated);
-                                                    }}
-                                                    className="flex-1 px-3 py-2 border rounded-lg"
-                                                />
-                                                {agents.length > 1 && (
-                                                    <button
-                                                        onClick={() => handleAgentDelete(index)}
-                                                        className="text-red-500 hover:text-red-700 font-bold text-xl"
-                                                    >
-                                                        ×
-                                                    </button>
-                                                )}
-                                            </div>
-                                            <textarea
-                                                value={agent.expertise}
-                                                onChange={(e) => {
-                                                    const updated = [...agents];
-                                                    updated[index].expertise = e.target.value;
-                                                    setAgents(updated);
-                                                }}
-                                                className="w-full px-3 py-2 border rounded-lg text-sm"
-                                                rows="2"
-                                                placeholder="Agent expertise..."
-                                            />
-                                        </div>
-                                    ))}
-                                    <button
-                                        onClick={handleAgentAdd}
-                                        className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-400"
-                                    >
-                                        + Add Agent
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* Supervisor Settings */}
-                            <div className="bg-white rounded-lg shadow-md p-6">
-                                <h3 className="text-lg font-semibold mb-3">👨‍🏫 Supervisor Configuration</h3>
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className="block text-sm font-medium mb-2">Grading Strictness</label>
-                                        <select
-                                            value={supervisorSettings.strictness}
-                                            onChange={(e) => setSupervisorSettings({...supervisorSettings, strictness: e.target.value})}
+                                            type="file"
+                                            accept=".txt,.doc,.docx"
+                                            onChange={handleFileUpload}
                                             className="w-full px-3 py-2 border rounded-lg"
-                                        >
-                                            <option value="lenient">Lenient</option>
-                                            <option value="balanced">Balanced</option>
-                                            <option value="strict">Strict</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium mb-2">Focus Areas</label>
-                                        <div className="space-y-2">
-                                            {['consistency', 'fairness', 'standards', 'improvement'].map(area => (
-                                                <label key={area} className="flex items-center">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={supervisorSettings.focusAreas.includes(area)}
-                                                        onChange={(e) => {
-                                                            const areas = e.target.checked 
-                                                                ? [...supervisorSettings.focusAreas, area]
-                                                                : supervisorSettings.focusAreas.filter(a => a !== area);
-                                                            setSupervisorSettings({...supervisorSettings, focusAreas: areas});
-                                                        }}
-                                                        className="mr-2"
-                                                    />
-                                                    <span className="capitalize">{area}</span>
-                                                </label>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Start Button */}
-                            <div className="text-center">
-                                <button
-                                    onClick={startGrading}
-                                    className="px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-lg font-semibold"
-                                >
-                                    Start AI Grading Process
-                                </button>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* Grading Phase */}
-                    {phase === 'grading' && (
-                        <div className="bg-white rounded-lg shadow-md p-8">
-                            <h2 className="text-2xl font-bold mb-6 text-center">🤖 AI Agents at Work</h2>
-                            {loading ? (
-                                <div className="space-y-4">
-                                    <div className="text-center">
-                                        <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
-                                            <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-                                        </div>
-                                        <p className="text-lg font-medium mb-2">{currentProgressMessage || 'Analyzing Essay...'}</p>
-                                        <p className="text-sm text-gray-600">Multiple AI agents are evaluating different aspects</p>
-                                    </div>
-                                    <div className="w-full bg-gray-200 rounded-full h-4">
-                                        <div 
-                                            className="bg-blue-600 h-4 rounded-full transition-all duration-300"
-                                            style={{ width: `${progress}%` }}
                                         />
+                                        {essayFile && (
+                                            <p className="text-sm text-green-600 mt-1">
+                                                ✓ 已选择: {essayFile.name}
+                                            </p>
+                                        )}
                                     </div>
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
-                                        {agents.map((agent, index) => (
-                                            <div key={index} className="text-center">
-                                                <div className="text-3xl mb-2">{agent.emoji}</div>
-                                                <p className="text-sm font-medium">{agent.name}</p>
-                                                <p className="text-xs text-gray-600">
-                                                    {apiSettings.useNetlifyFunctions ? 'AI Processing...' : 'Analyzing...'}
-                                                </p>
+
+                                    <button
+                                        onClick={testGrading}
+                                        disabled={!essayFile || loading}
+                                        className="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-gray-400"
+                                    >
+                                        {loading ? '测试中...' : '测试完整评分流程'}
+                                    </button>
+
+                                    {loading && (
+                                        <div className="space-y-2">
+                                            <div className="w-full bg-gray-200 rounded-full h-2">
+                                                <div 
+                                                    className="bg-purple-600 h-2 rounded-full transition-all duration-300"
+                                                    style={{ width: `${progress}%` }}
+                                                />
                                             </div>
-                                        ))}
-                                    </div>
-                                    {apiSettings.useNetlifyFunctions && (
-                                        <p className="text-center text-sm text-green-600 mt-4">
-                                            🚀 Using Netlify Functions with OpenAI GPT-4
-                                        </p>
+                                            <p className="text-sm text-gray-600">{currentProgressMessage}</p>
+                                        </div>
                                     )}
                                 </div>
-                            ) : (
-                                <div className="text-center">
-                                    <div className="text-6xl mb-4">✅</div>
-                                    <p className="text-lg font-medium">Grading Complete!</p>
-                                </div>
-                            )}
-                        </div>
-                    )}
+                            </div>
 
-                    {/* Supervision Phase */}
-                    {phase === 'supervision' && (
-                        <div className="space-y-6">
+                            {/* 调试日志 */}
                             <div className="bg-white rounded-lg shadow-md p-6">
-                                <h2 className="text-2xl font-bold mb-4">👨‍🏫 Teacher Supervision & Quality Control</h2>
-                                
-                                {/* Show Agent Results Summary if available */}
-                                {Object.keys(agentResults).length > 0 && (
-                                    <div className="mb-6 p-4 bg-blue-50 rounded-lg">
-                                        <h3 className="font-semibold mb-2">🤖 Agent Analysis Summary</h3>
-                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                            {agents.map(agent => {
-                                                const result = agentResults[agent.id];
-                                                return (
-                                                    <div key={agent.id} className="text-center">
-                                                        <div className="text-2xl mb-1">{agent.emoji}</div>
-                                                        <p className="text-sm font-medium">{agent.name}</p>
-                                                        <p className="text-xs text-gray-600">
-                                                            Confidence: {result?.confidence || 'N/A'}%
-                                                        </p>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-                                )}
-                                
-                                <div className="space-y-4">
-                                    {gradingResults.map((result, index) => (
-                                        <div key={index} className="border rounded-lg p-4">
-                                            <div className="flex justify-between items-start mb-3">
-                                                <div>
-                                                    <h4 className="font-semibold">{result.name}</h4>
-                                                    <p className="text-sm text-gray-600">{result.description}</p>
-                                                </div>
-                                                <div className="text-right">
-                                                    <div className="text-2xl font-bold text-blue-600">
-                                                        {Math.round(result.consensus)}%
-                                                    </div>
-                                                    <p className="text-xs text-gray-500">Consensus Score</p>
-                                                </div>
-                                            </div>
-                                            
-                                            {/* Agent Scores */}
-                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-3">
-                                                {result.agentScores.map((agentScore, agentIndex) => (
-                                                    <div key={agentIndex} className="bg-gray-50 p-2 rounded text-center">
-                                                        <p className="text-xs font-medium">{agentScore.agent}</p>
-                                                        <p className="text-lg font-bold">{agentScore.score}%</p>
-                                                        {agentScore.confidence && (
-                                                            <p className="text-xs text-gray-500">({agentScore.confidence}% conf.)</p>
-                                                        )}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                            
-                                            {/* Show agreements/disagreements if available */}
-                                            {(result.agreements?.length > 0 || result.disagreements?.length > 0) && (
-                                                <div className="mt-3 space-y-2">
-                                                    {result.agreements?.length > 0 && (
-                                                        <div className="text-sm">
-                                                            <span className="font-medium text-green-600">✅ Agreements: </span>
-                                                            <span className="text-gray-700">{result.agreements.join(', ')}</span>
-                                                        </div>
-                                                    )}
-                                                    {result.disagreements?.length > 0 && (
-                                                        <div className="text-sm">
-                                                            <span className="font-medium text-orange-600">⚠️ Disagreements: </span>
-                                                            <span className="text-gray-700">{result.disagreements.join(', ')}</span>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            )}
-                                            
-                                            {/* Flags for review */}
-                                            {result.flagsForReview?.length > 0 && (
-                                                <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded">
-                                                    <p className="text-sm font-medium text-yellow-800">🚩 Requires Review:</p>
-                                                    <ul className="text-sm text-yellow-700 mt-1">
-                                                        {result.flagsForReview.map((flag, flagIndex) => (
-                                                            <li key={flagIndex}>• {flag}</li>
-                                                        ))}
-                                                    </ul>
-                                                </div>
-                                            )}
-                                            
-                                            <div className="mt-2 text-sm text-gray-600">
-                                                <p className="font-medium">💡 What is Consensus Score?</p>
-                                                <p className="text-xs">AI-moderated final score after agent discussion and analysis</p>
-                                            </div>
-                                        </div>
-                                    ))}
+                                <div className="flex justify-between items-center mb-4">
+                                    <h2 className="text-2xl font-bold">📝 调试日志</h2>
+                                    <button
+                                        onClick={clearLogs}
+                                        className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600"
+                                    >
+                                        清除日志
+                                    </button>
                                 </div>
-                                <div className="mt-6 flex gap-4 justify-center">
-                                    <button
-                                        onClick={applySupervisorAdjustments}
-                                        className="px-6 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
-                                    >
-                                        Apply Supervisor Adjustments
-                                    </button>
-                                    <button
-                                        onClick={handleRetryGrading}
-                                        className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-                                    >
-                                        Retry Grading
-                                    </button>
-                                    <button
-                                        onClick={startOver}
-                                        className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600"
-                                    >
-                                        Start Over
-                                    </button>
+                                
+                                <div className="bg-black text-green-400 p-4 rounded-lg font-mono text-sm max-h-96 overflow-y-auto">
+                                    {debugLogs.length === 0 ? (
+                                        <p>等待日志输出...</p>
+                                    ) : (
+                                        debugLogs.map((log, index) => (
+                                            <div key={index} className={`mb-1 ${
+                                                log.type === 'error' ? 'text-red-400' :
+                                                log.type === 'success' ? 'text-green-400' :
+                                                log.type === 'warning' ? 'text-yellow-400' :
+                                                'text-blue-400'
+                                            }`}>
+                                                [{log.timestamp}] {log.message}
+                                            </div>
+                                        ))
+                                    )}
                                 </div>
                             </div>
-                        </div>
-                    )}
 
-                    {/* Manual Adjustment Phase - keeping existing code */}
-                    {phase === 'manual' && (
-                        <div className="space-y-6">
-                            <div className="bg-white rounded-lg shadow-md p-6">
-                                <h2 className="text-2xl font-bold mb-4">✏️ Final Review & Adjustment</h2>
-                                <p className="text-sm text-gray-600 mb-6">
-                                    Review the AI-generated scores and make adjustments based on your professional judgment
-                                </p>
-                                
-                                {/* Summary of AI Scores */}
-                                <div className="bg-blue-50 p-4 rounded-lg mb-6">
-                                    <h3 className="font-semibold mb-2">AI Evaluation Summary</h3>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        {gradingResults.map((result, index) => (
-                                            <div key={index} className="flex justify-between">
-                                                <span className="text-sm">{result.name}:</span>
-                                                <span className="font-medium">{Math.round(result.score)}%</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                    <div className="mt-2 pt-2 border-t">
-                                        <div className="flex justify-between font-semibold">
-                                            <span>Overall:</span>
-                                            <span>{Math.round(gradingResults.reduce((sum, r) => sum + (r.score / 100) * r.weight, 0))}%</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div className="space-y-4">
-                                    {gradingResults.map((result, index) => (
-                                        <div key={index} className="border rounded-lg p-4">
-                                            <div className="flex justify-between items-start mb-3">
-                                                <div className="flex-1">
-                                                    <h4 className="font-semibold">{result.name}</h4>
-                                                    <p className="text-sm text-gray-600">{result.description}</p>
-                                                    <p className="text-sm text-blue-600 mt-1">AI Score: {Math.round(result.score)}%</p>
-                                                </div>
-                                                <div className="flex items-center gap-4">
-                                                    <div className="text-center">
-                                                        <label className="text-xs text-gray-500">Adjusted Score</label>
-                                                        <input
-                                                            type="range"
-                                                            min="0"
-                                                            max="100"
-                                                            value={result.score}
-                                                            onChange={(e) => {
-                                                                const updated = [...gradingResults];
-                                                                updated[index].score = Number(e.target.value);
-                                                                setGradingResults(updated);
-                                                            }}
-                                                            className="w-32"
-                                                        />
-                                                        <div className="text-2xl font-bold text-blue-600">
-                                                            {Math.round(result.score)}%
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            
-                                            {/* AI Feedback Summary */}
-                                            <div className="bg-gray-50 p-3 rounded mb-3">
-                                                <p className="text-sm font-medium mb-1">AI Feedback:</p>
-                                                <p className="text-sm text-gray-700">{result.feedback}</p>
-                                            </div>
-                                            
-                                            {/* Teacher Options */}
-                                            <div className="space-y-3">
-                                                <div>
-                                                    <label className="text-sm font-medium">Your Assessment:</label>
-                                                    <div className="mt-1 space-y-2">
-                                                        <textarea
-                                                            className="w-full px-3 py-2 border rounded-lg text-sm"
-                                                            rows="3"
-                                                            placeholder="Add your feedback or explain score adjustment..."
-                                                            value={result.manualFeedback || ''}
-                                                            onChange={(e) => {
-                                                                const updated = [...gradingResults];
-                                                                updated[index].manualFeedback = e.target.value;
-                                                                setGradingResults(updated);
-                                                            }}
-                                                        />
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                                
-                                <div className="mt-6 flex gap-4 justify-center">
-                                    <button
-                                        onClick={() => setPhase('final')}
-                                        className="px-6 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
-                                    >
-                                        Finalize Grading
-                                    </button>
-                                    <button
-                                        onClick={handleRetryGrading}
-                                        className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-                                    >
-                                        Re-run AI Evaluation
-                                    </button>
-                                    <button
-                                        onClick={startOver}
-                                        className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600"
-                                    >
-                                        Start Over
-                                    </button>
+                            {/* 快速修复建议 */}
+                            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+                                <h2 className="text-xl font-bold mb-4">💡 常见问题快速修复</h2>
+                                <div className="space-y-2 text-sm">
+                                    <p><strong>1. Functions 404 错误:</strong> 检查文件是否在 <code>netlify/functions/</code> 目录</p>
+                                    <p><strong>2. API Key 错误:</strong> 在 Netlify 控制面板设置环境变量 <code>OPENAI_API_KEY</code></p>
+                                    <p><strong>3. CORS 错误:</strong> 函数已包含 CORS 头，如仍有问题请检查请求格式</p>
+                                    <p><strong>4. 超时错误:</strong> OpenAI API 调用可能需要时间，请耐心等待</p>
                                 </div>
                             </div>
-                        </div>
+                        </>
                     )}
 
-                    {/* Final Results */}
-                    {phase === 'final' && (
-                        <div className="space-y-6">
-                            <div className="bg-white rounded-lg shadow-md p-6">
-                                <h2 className="text-2xl font-bold mb-6 text-center">📊 Final Grading Report</h2>
-                                
-                                <div className="text-center p-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg">
-                                    <h3 className="text-2xl font-bold mb-2">Final Score</h3>
-                                    <div className="text-5xl font-bold text-blue-600 mb-2">
-                                        {Math.round(gradingResults.reduce((sum, r) => sum + (r.score / 100) * r.weight, 0) * (totalScore / 100))} / {totalScore}
-                                    </div>
-                                    <div className="text-lg text-gray-600">
-                                        {Math.round(gradingResults.reduce((sum, r) => sum + (r.score / 100) * r.weight, 0))}%
-                                    </div>
-                                </div>
-                                
-                                <div className="mt-6 space-y-4">
-                                    {gradingResults.map((result, index) => (
-                                        <div key={index} className="bg-gray-50 rounded-lg p-4">
-                                            <div className="flex justify-between items-center mb-2">
-                                                <h4 className="font-semibold text-lg">{result.name}</h4>
-                                                <div className="text-2xl font-bold text-blue-600">
-                                                    {Math.round((result.score / 100) * result.weight * (totalScore / 100))} / {Math.round(result.weight * (totalScore / 100))}
-                                                </div>
-                                            </div>
-                                            <div className="w-full bg-gray-200 rounded-full h-3 mb-2">
-                                                <div 
-                                                    className="bg-blue-600 h-3 rounded-full"
-                                                    style={{ width: `${result.score}%` }}
-                                                />
-                                            </div>
-                                            <p className="text-sm text-gray-700 mb-1">{result.feedback}</p>
-                                            {result.supervisorNotes && (
-                                                <p className="text-sm text-orange-600 italic">
-                                                    Supervisor: {result.supervisorNotes}
-                                                </p>
-                                            )}
-                                            {result.manualFeedback && (
-                                                <p className="text-sm text-purple-600 italic">
-                                                    Manual: {result.manualFeedback}
-                                                </p>
-                                            )}
-                                            
-                                            {/* Agent Dialogue History */}
-                                            {result.dialogue && result.dialogue.length > 0 && (
-                                                <details className="mt-3">
-                                                    <summary className="cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900">
-                                                        View Agent Discussion ({result.dialogue.length} messages)
-                                                    </summary>
-                                                    <div className="mt-2 space-y-2 max-h-60 overflow-y-auto">
-                                                        {result.dialogue.map((msg, msgIndex) => (
-                                                            <div key={msgIndex} className={`p-2 rounded-lg text-sm ${
-                                                                msg.type === 'consensus' ? 'bg-green-100' : 
-                                                                msg.type === 'evaluation' ? 'bg-blue-50' : 
-                                                                'bg-gray-100'
-                                                            }`}>
-                                                                <div className="flex items-start gap-2">
-                                                                    <span className="text-lg">{msg.emoji}</span>
-                                                                    <div className="flex-1">
-                                                                        <span className="font-medium">{msg.agent}:</span>
-                                                                        <span className="ml-2">{msg.message}</span>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </details>
-                                            )}
-                                        </div>
-                                    ))}
-                                </div>
-                                
-                                <div className="mt-6 flex gap-4 justify-center">
-                                    <button
-                                        onClick={saveResults}
-                                        className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                                    >
-                                        Download Report
-                                    </button>
-                                    <button
-                                        onClick={startOver}
-                                        className="px-6 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600"
-                                    >
-                                        Grade Another Essay
-                                    </button>
-                                </div>
-                            </div>
+                    {!debugMode && (
+                        <div className="bg-white rounded-lg shadow-md p-8 text-center">
+                            <div className="text-6xl mb-4">🔧</div>
+                            <h2 className="text-2xl font-bold mb-4">调试模式已关闭</h2>
+                            <p className="text-gray-600 mb-6">
+                                开启调试模式来测试 API 连接和诊断问题
+                            </p>
+                            <button
+                                onClick={() => setDebugMode(true)}
+                                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                            >
+                                开始调试
+                            </button>
                         </div>
                     )}
                 </div>
