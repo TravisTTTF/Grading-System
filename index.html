@@ -168,8 +168,7 @@
                 setPhase('grading');
                 simulateGrading();
             };
-
-            const simulateGrading = async () => {
+			const simulateGrading = async () => {
                 setLoading(true);
                 setProgress(0);
                 
@@ -487,8 +486,7 @@ IMPROVEMENT: [area for improvement]`;
                     setProgress(0);
                 }
             };
-
-            return (
+			return (
                 <div className="max-w-6xl mx-auto p-6 space-y-6">
                     {/* Header */}
                     <div className="text-center mb-8">
@@ -641,6 +639,70 @@ IMPROVEMENT: [area for improvement]`;
                                                         updated[index].emoji = e.target.value;
                                                         setAgents(updated);
                                                     }}
+                                                    className="w-16 px-2 py-2 border rounded-lg text-center text-2xl"
+                                                />
+                                                <input
+                                                    type="text"
+                                                    value={agent.name}
+                                                    onChange={(e) => {
+                                                        const updated = [...agents];
+                                                        updated[index].name = e.target.value;
+                                                        setAgents(updated);
+                                                    }}
+                                                    className="flex-1 px-3 py-2 border rounded-lg"
+                                                />
+                                                {agents.length > 1 && (
+                                                    <button
+                                                        onClick={() => handleAgentDelete(index)}
+                                                        className="text-red-500 hover:text-red-700 font-bold text-xl"
+                                                    >
+                                                        ×
+                                                    </button>
+                                                )}
+                                            </div>
+                                            <textarea
+                                                value={agent.expertise}
+                                                onChange={(e) => {
+                                                    const updated = [...agents];
+                                                    updated[index].expertise = e.target.value;
+                                                    setAgents(updated);
+                                                }}
+                                                className="w-full px-3 py-2 border rounded-lg text-sm"
+                                                rows="2"
+                                                placeholder="Agent expertise..."
+                                            />
+                                        </div>
+                                    ))}
+                                    <button
+                                        onClick={handleAgentAdd}
+                                        className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-400"
+                                    >
+                                        + Add Agent
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* API Configuration */}
+                            <div className="bg-white rounded-lg shadow-md p-6">
+                                <h3 className="text-lg font-semibold mb-3">🔌 LLM API Configuration (Optional)</h3>
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium mb-2">API Provider</label>
+                                        <select
+                                            value={apiSettings.provider}
+                                            onChange={(e) => {
+                                                const provider = e.target.value;
+                                                setApiSettings({
+                                                    ...apiSettings,
+                                                    provider,
+                                                    endpoint: provider === 'openai' ? 'https://api.openai.com/v1/chat/completions' :
+                                                             provider === 'anthropic' ? 'https://api.anthropic.com/v1/messages' :
+                                                             apiSettings.endpoint,
+                                                    model: provider === 'openai' ? 'gpt-4o' :
+                                                           provider === 'anthropic' ? 'claude-3-opus-20240229' :
+                                                           apiSettings.model
+                                                });
+                                            }}
                                             className="w-full px-3 py-2 border rounded-lg"
                                         >
                                             <option value="openai">OpenAI (GPT-4)</option>
@@ -675,8 +737,7 @@ IMPROVEMENT: [area for improvement]`;
                                             />
                                         </div>
                                     )}
-                                    
-                                    <div>
+									<div>
                                         <label className="block text-sm font-medium mb-2">Model</label>
                                         {apiSettings.provider === 'openai' ? (
                                             <select
@@ -933,8 +994,7 @@ IMPROVEMENT: [area for improvement]`;
                             </div>
                         </div>
                     )}
-
-                    {/* Manual Adjustment Phase */}
+					{/* Manual Adjustment Phase */}
                     {phase === 'manual' && (
                         <div className="space-y-6">
                             <div className="bg-white rounded-lg shadow-md p-6">
@@ -1168,67 +1228,3 @@ IMPROVEMENT: [area for improvement]`;
     </script>
 </body>
 </html>
-                                                    className="w-16 px-2 py-2 border rounded-lg text-center text-2xl"
-                                                />
-                                                <input
-                                                    type="text"
-                                                    value={agent.name}
-                                                    onChange={(e) => {
-                                                        const updated = [...agents];
-                                                        updated[index].name = e.target.value;
-                                                        setAgents(updated);
-                                                    }}
-                                                    className="flex-1 px-3 py-2 border rounded-lg"
-                                                />
-                                                {agents.length > 1 && (
-                                                    <button
-                                                        onClick={() => handleAgentDelete(index)}
-                                                        className="text-red-500 hover:text-red-700 font-bold text-xl"
-                                                    >
-                                                        ×
-                                                    </button>
-                                                )}
-                                            </div>
-                                            <textarea
-                                                value={agent.expertise}
-                                                onChange={(e) => {
-                                                    const updated = [...agents];
-                                                    updated[index].expertise = e.target.value;
-                                                    setAgents(updated);
-                                                }}
-                                                className="w-full px-3 py-2 border rounded-lg text-sm"
-                                                rows="2"
-                                                placeholder="Agent expertise..."
-                                            />
-                                        </div>
-                                    ))}
-                                    <button
-                                        onClick={handleAgentAdd}
-                                        className="w-full py-2 border-2 border-dashed border-gray-300 rounded-lg hover:border-gray-400"
-                                    >
-                                        + Add Agent
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* API Configuration */}
-                            <div className="bg-white rounded-lg shadow-md p-6">
-                                <h3 className="text-lg font-semibold mb-3">🔌 LLM API Configuration (Optional)</h3>
-                                <div className="space-y-4">
-                                    <div>
-                                        <label className="block text-sm font-medium mb-2">API Provider</label>
-                                        <select
-                                            value={apiSettings.provider}
-                                            onChange={(e) => {
-                                                const provider = e.target.value;
-                                                setApiSettings({
-                                                    ...apiSettings,
-                                                    provider,
-                                                    endpoint: provider === 'openai' ? 'https://api.openai.com/v1/chat/completions' :
-                                                             provider === 'anthropic' ? 'https://api.anthropic.com/v1/messages' :
-                                                             apiSettings.endpoint,
-                                                    model: provider === 'openai' ? 'gpt-4o' :
-                                                           provider === 'anthropic' ? 'claude-3-opus-20240229' :
-                                                           apiSettings.model
-                                                });
-                                            }}
