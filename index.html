@@ -149,7 +149,8 @@
                 model: 'gpt-4',
                 temperature: 0.3 // Lower temperature for more consistent grading
             };
-			// Save and load configuration
+
+            // Save and load configuration
             const saveConfiguration = () => {
                 const config = {
                     metrics,
@@ -227,7 +228,8 @@
                 setPhase('grading');
                 performSpecializedGrading();
             };
-			const performSpecializedGrading = async () => {
+
+            const performSpecializedGrading = async () => {
                 setLoading(true);
                 setProgress(0);
                 setAgentResults({});
@@ -348,7 +350,8 @@
                     setPhase('setup');
                 }
             };
-			const evaluateMetricWithAgent = async (agent, metric, reportText, rubricText) => {
+
+            const evaluateMetricWithAgent = async (agent, metric, reportText, rubricText) => {
                 try {
                     const response = await callNetlifyFunction('ai-agent-grade', {
                         agentId: agent.id,
@@ -400,9 +403,9 @@
                 const disagreements = [];
                 const flagsForReview = [];
                 
-                evaluations.forEach(eval => {
-                    const weight = eval.isPrimary ? 0.6 : (0.4 / (evaluations.length - 1));
-                    totalScore += eval.evaluation.score * weight;
+                evaluations.forEach(evalItem => {
+                    const weight = evalItem.isPrimary ? 0.6 : (0.4 / (evaluations.length - 1));
+                    totalScore += evalItem.evaluation.score * weight;
                     totalWeight += weight;
                 });
                 
@@ -455,11 +458,11 @@
                 }
                 
                 // Supporting agents
-                evaluations.filter(e => !e.isPrimary).forEach(eval => {
+                evaluations.filter(e => !e.isPrimary).forEach(evalItem => {
                     dialogue.push({
-                        agent: eval.agent.name,
-                        emoji: eval.agent.emoji,
-                        message: `From my perspective, I evaluated this at ${eval.evaluation.score}/100. ${eval.evaluation.feedback}`,
+                        agent: evalItem.agent.name,
+                        emoji: evalItem.agent.emoji,
+                        message: `From my perspective, I evaluated this at ${evalItem.evaluation.score}/100. ${evalItem.evaluation.feedback}`,
                         type: 'supporting-evaluation'
                     });
                 });
@@ -525,7 +528,8 @@
                     setAgentResults({});
                 }
             };
-			return (
+
+            return (
                 <div className="max-w-6xl mx-auto p-6 space-y-6">
                     {/* Header */}
                     <div className="text-center mb-8">
@@ -678,7 +682,8 @@
                                     </div>
                                 </div>
                             </div>
-							{/* Specialized AI Agents */}
+
+                            {/* Specialized AI Agents */}
                             <div className="bg-white rounded-lg shadow-md p-6">
                                 <h3 className="text-lg font-semibold mb-3">🤖 Specialized Engineering Evaluators</h3>
                                 <div className="space-y-3">
@@ -806,7 +811,8 @@
                             )}
                         </div>
                     )}
-					{/* Supervision Phase */}
+
+                    {/* Supervision Phase */}
                     {phase === 'supervision' && (
                         <div className="space-y-6">
                             <div className="bg-white rounded-lg shadow-md p-6">
@@ -895,7 +901,7 @@
                                         Apply Instructor Adjustments
                                     </button>
                                     <button
-                                        onClick={() => setPhase('grading') && performSpecializedGrading()}
+                                        onClick={() => { setPhase('grading'); performSpecializedGrading(); }}
                                         className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
                                     >
                                         Re-evaluate Report
@@ -910,7 +916,8 @@
                             </div>
                         </div>
                     )}
-					{/* Manual Adjustment Phase */}
+
+                    {/* Manual Adjustment Phase */}
                     {phase === 'manual' && (
                         <div className="space-y-6">
                             <div className="bg-white rounded-lg shadow-md p-6">
