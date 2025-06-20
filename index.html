@@ -149,8 +149,7 @@
                 model: 'gpt-4',
                 temperature: 0.3 // Lower temperature for more consistent grading
             };
-
-            // Save and load configuration
+			// Save and load configuration
             const saveConfiguration = () => {
                 const config = {
                     metrics,
@@ -228,8 +227,7 @@
                 setPhase('grading');
                 performSpecializedGrading();
             };
-
-            const performSpecializedGrading = async () => {
+			const performSpecializedGrading = async () => {
                 setLoading(true);
                 setProgress(0);
                 setAgentResults({});
@@ -350,8 +348,7 @@
                     setPhase('setup');
                 }
             };
-
-            const evaluateMetricWithAgent = async (agent, metric, reportText, rubricText) => {
+			const evaluateMetricWithAgent = async (agent, metric, reportText, rubricText) => {
                 try {
                     const response = await callNetlifyFunction('ai-agent-grade', {
                         agentId: agent.id,
@@ -528,8 +525,7 @@
                     setAgentResults({});
                 }
             };
-
-            return (
+			return (
                 <div className="max-w-6xl mx-auto p-6 space-y-6">
                     {/* Header */}
                     <div className="text-center mb-8">
@@ -682,8 +678,7 @@
                                     </div>
                                 </div>
                             </div>
-
-                            {/* Specialized AI Agents */}
+							{/* Specialized AI Agents */}
                             <div className="bg-white rounded-lg shadow-md p-6">
                                 <h3 className="text-lg font-semibold mb-3">🤖 Specialized Engineering Evaluators</h3>
                                 <div className="space-y-3">
@@ -811,8 +806,7 @@
                             )}
                         </div>
                     )}
-
-                    {/* Supervision Phase */}
+					{/* Supervision Phase */}
                     {phase === 'supervision' && (
                         <div className="space-y-6">
                             <div className="bg-white rounded-lg shadow-md p-6">
@@ -916,8 +910,7 @@
                             </div>
                         </div>
                     )}
-
-                    {/* Manual Adjustment Phase */}
+					{/* Manual Adjustment Phase */}
                     {phase === 'manual' && (
                         <div className="space-y-6">
                             <div className="bg-white rounded-lg shadow-md p-6">
