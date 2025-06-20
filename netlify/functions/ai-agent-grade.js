@@ -20,76 +20,45 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    const { agentId, agentPrompt, content, metrics, teacherGuidelines } = JSON.parse(event.body);
+    const { agentId, agentPrompt, content, specificMetric, teacherGuidelines, apiSettings } = JSON.parse(event.body);
 
-    // Validate required parameters
-    if (!agentId || !content || !metrics) {
-      return {
-        statusCode: 400,
-        headers,
-        body: JSON.stringify({ 
-          success: false, 
-          error: 'Missing required parameters: agentId, content, or metrics' 
-        })
-      };
-    }
-
-    // Check if OpenAI API key is configured
-    if (!process.env.OPENAI_API_KEY) {
-      return {
-        statusCode: 500,
-        headers,
-        body: JSON.stringify({ 
-          success: false, 
-          error: 'OpenAI API key not configured in environment variables' 
-        })
-      };
-    }
-
-    // Construct the prompt for the specific agent
-    const systemPrompt = `You are an expert AI agent for grading essays and reports. 
+    // Construct the prompt for the specific agent and metric
+    const systemPrompt = `You are an expert AI agent specializing in evaluating engineering reports. 
 
 Agent Role: ${getAgentRole(agentId)}
 
-Custom Instructions: ${agentPrompt}
+${agentPrompt}
 
-Evaluation Metrics:
-${metrics.map(metric => `- ${metric.name} (${metric.weight}%): ${metric.description}`).join('\n')}
+IMPORTANT: You are evaluating ONLY the following specific aspect:
+Metric Name: ${specificMetric.name}
+Weight: ${specificMetric.weight}%
+Evaluation Criteria: ${specificMetric.description}
 
-${teacherGuidelines ? `Teacher Guidelines:\n${teacherGuidelines}\n` : ''}
+${teacherGuidelines ? `Additional Teacher Guidelines:\n${teacherGuidelines}` : ''}
 
-Please evaluate the following essay/report and provide:
-1. Numerical scores (0-100) for each metric
-2. Detailed feedback explaining your scoring rationale
-3. Specific strengths you identified
-4. Areas for improvement
-5. Your confidence level (0-100%) in your assessment
+Please evaluate ONLY this specific metric and provide:
+1. A numerical score (0-100) based on engineering standards
+2. Detailed technical feedback with specific examples from the report
+3. Your confidence level (0-100%) in your assessment
+4. Clear reasoning for your score
+
+Consider industry standards where:
+- 90-100: Exceptional work exceeding professional standards
+- 80-89: Strong performance meeting all requirements
+- 70-79: Adequate work meeting minimum professional standards
+- 60-69: Below standards with significant issues
+- Below 60: Unacceptable for professional engineering work
 
 Format your response as JSON:
 {
-  "scores": {
-    "${metrics[0]?.name?.toLowerCase()?.replace(/ /g, '_')}": score,
-    "${metrics[1]?.name?.toLowerCase()?.replace(/ /g, '_')}": score,
-    etc...
-  },
-  "feedback": [
-    "detailed feedback point 1",
-    "detailed feedback point 2",
-    "etc..."
-  ],
-  "strengths": [
-    "specific strength 1",
-    "specific strength 2"
-  ],
-  "improvements": [
-    "improvement area 1",
-    "improvement area 2"
-  ],
+  "score": numerical_score,
+  "feedback": "detailed technical feedback with specific examples",
   "confidence": confidence_percentage,
-  "reasoning": "detailed explanation of your scoring methodology and rationale"
-}
-
-Be thorough, fair, and constructive in your evaluation. Focus on providing actionable feedback.`;
+  "reasoning": "clear explanation of how you arrived at this score",
+  "specificStrengths": ["strength 1", "strength 2"],
+  "specificWeaknesses": ["weakness 1", "weakness 2"],
+  "recommendations": ["specific recommendation 1", "specific recommendation 2"]
+}`;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -106,18 +75,16 @@ Be thorough, fair, and constructive in your evaluation. Focus on providing actio
           },
           {
             role: 'user',
-            content: `Essay/Report to Evaluate:\n\n${content.substring(0, 8000)}` // Limit content to avoid token limits
+            content: `Engineering Report to Evaluate:\n\n${content}\n\nPlease evaluate ONLY the "${specificMetric.name}" aspect of this report.`
           }
         ],
-        temperature: 0.3,
+        temperature: 0.3, // Lower temperature for consistent grading
         max_tokens: 2000
       })
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('OpenAI API error:', response.status, errorText);
-      throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
+      throw new Error(`OpenAI API error: ${response.status}`);
     }
 
     const data = await response.json();
@@ -126,17 +93,22 @@ Be thorough, fair, and constructive in your evaluation. Focus on providing actio
     // Try to parse JSON response
     let parsedResponse;
     try {
-      // Clean the response - sometimes AI adds markdown formatting
-      const cleanedResponse = aiResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '');
-      parsedResponse = JSON.parse(cleanedResponse);
+      parsedResponse = JSON.parse(aiResponse);
     } catch (parseError) {
-      console.error('JSON parsing failed:', parseError);
-      // If JSON parsing fails, create a structured response from text
-      parsedResponse = extractStructuredResponse(aiResponse, metrics);
+      // If JSON parsing fails, create a structured response from the text
+      parsedResponse = extractStructuredResponse(aiResponse, specificMetric);
     }
 
-    // Validate and normalize the response
-    const normalizedResponse = normalizeAgentResponse(parsedResponse, metrics);
+    // Ensure all required fields are present
+    const validatedResponse = {
+      score: parsedResponse.score || 75,
+      feedback: parsedResponse.feedback || `Evaluation completed for ${specificMetric.name}.`,
+      confidence: parsedResponse.confidence || 80,
+      reasoning: parsedResponse.reasoning || 'Based on engineering standards and best practices.',
+      specificStrengths: parsedResponse.specificStrengths || [],
+      specificWeaknesses: parsedResponse.specificWeaknesses || [],
+      recommendations: parsedResponse.recommendations || []
+    };
 
     return {
       statusCode: 200,
@@ -144,19 +116,19 @@ Be thorough, fair, and constructive in your evaluation. Focus on providing actio
       body: JSON.stringify({
         success: true,
         agentId,
-        result: normalizedResponse
+        metric: specificMetric.name,
+        result: validatedResponse
       })
     };
 
   } catch (error) {
-    console.error('Error in ai-agent-grade:', error);
+    console.error('Error:', error);
     return {
       statusCode: 500,
       headers,
       body: JSON.stringify({
         success: false,
-        error: error.message,
-        agentId: agentId || 'unknown'
+        error: error.message
       })
     };
   }
@@ -164,131 +136,86 @@ Be thorough, fair, and constructive in your evaluation. Focus on providing actio
 
 function getAgentRole(agentId) {
   const roles = {
-    1: "Content Expert - Focus on technical accuracy, depth of analysis, thesis strength, evidence quality, and argumentation",
-    2: "Language Expert - Focus on grammar, vocabulary usage, sentence structure, writing clarity, and professional communication style",
-    3: "Structure Expert - Focus on document organization, paragraph flow, logical transitions, formatting, and citation standards",
-    4: "Innovation Expert - Focus on creative problem-solving, critical thinking, original insights, and innovative approaches",
-    5: "Holistic Evaluator - Provide balanced assessment considering all aspects of the work"
+    1: "Technical Content Expert - Specializing in engineering calculations, methodology, and technical accuracy",
+    2: "Technical Writing Expert - Specializing in professional engineering documentation and communication",
+    3: "Report Structure Expert - Specializing in engineering report organization and formatting standards",
+    4: "Engineering Innovation Expert - Specializing in creative problem-solving and forward-thinking approaches"
   };
-  return roles[agentId] || `Evaluator Agent ${agentId} - Provide comprehensive assessment of the submitted work`;
+  return roles[agentId] || "Engineering Evaluator";
 }
 
-function extractStructuredResponse(text, metrics) {
-  // Extract scores using various patterns
-  const scores = {};
-  metrics.forEach(metric => {
-    const metricKey = metric.name.toLowerCase().replace(/ /g, '_');
-    const patterns = [
-      new RegExp(`"${metricKey}"[:\\s]*([0-9]+)`, 'i'),
-      new RegExp(`${metric.name}[:\\s]*([0-9]+)`, 'i'),
-      new RegExp(`([0-9]+)[\\s]*(?:out of 100|/100)[\\s]*(?:for)?[\\s]*${metric.name}`, 'i'),
-      new RegExp(`${metric.name.toLowerCase()}[:\\s]*([0-9]+)`, 'i')
-    ];
-    
-    for (const pattern of patterns) {
-      const match = text.match(pattern);
-      if (match) {
-        scores[metricKey] = Math.min(100, Math.max(0, parseInt(match[1])));
-        break;
-      }
+function extractStructuredResponse(text, metric) {
+  // Extract score from text using various patterns
+  const scorePatterns = [
+    /score[:\s]*(\d+)/i,
+    /(\d+)\s*(?:out of\s*)?(?:\/\s*)?100/i,
+    /grade[:\s]*(\d+)/i
+  ];
+  
+  let score = 75; // default
+  for (const pattern of scorePatterns) {
+    const match = text.match(pattern);
+    if (match && match[1]) {
+      score = parseInt(match[1]);
+      break;
     }
-    
-    // Default score if not found
-    if (!scores[metricKey]) {
-      scores[metricKey] = Math.floor(Math.random() * 20) + 75; // 75-95
+  }
+  
+  // Extract confidence
+  const confidencePattern = /confidence[:\s]*(\d+)/i;
+  const confidenceMatch = text.match(confidencePattern);
+  const confidence = confidenceMatch ? parseInt(confidenceMatch[1]) : 80;
+  
+  // Extract strengths and weaknesses
+  const strengths = [];
+  const weaknesses = [];
+  
+  const strengthPatterns = [
+    /strengths?[:\s]*(.*?)(?:weakness|$)/is,
+    /positive[:\s]*(.*?)(?:negative|weakness|$)/is
+  ];
+  
+  const weaknessPatterns = [
+    /weakness(?:es)?[:\s]*(.*?)(?:recommendation|$)/is,
+    /negative[:\s]*(.*?)(?:recommendation|$)/is,
+    /improve(?:ment)?[:\s]*(.*?)(?:recommendation|$)/is
+  ];
+  
+  for (const pattern of strengthPatterns) {
+    const match = text.match(pattern);
+    if (match && match[1]) {
+      const items = match[1].split(/[•\-\*\n]/).filter(item => item.trim().length > 10);
+      strengths.push(...items.slice(0, 3).map(item => item.trim()));
+      break;
     }
-  });
-
-  // Extract feedback sections
-  const feedbackSections = text.split(/(?:\n|^)(?:\d+\.|•|-|\*)\s*/).filter(section => 
-    section.trim().length > 15
-  );
-
-  // Extract confidence if mentioned
-  const confidenceMatch = text.match(/confidence[:\s]*([0-9]+)/i);
-  const confidence = confidenceMatch ? parseInt(confidenceMatch[1]) : 85;
-
+  }
+  
+  for (const pattern of weaknessPatterns) {
+    const match = text.match(pattern);
+    if (match && match[1]) {
+      const items = match[1].split(/[•\-\*\n]/).filter(item => item.trim().length > 10);
+      weaknesses.push(...items.slice(0, 3).map(item => item.trim()));
+      break;
+    }
+  }
+  
+  // Extract recommendations
+  const recommendations = [];
+  const recPattern = /recommend(?:ation)?s?[:\s]*(.*?)$/is;
+  const recMatch = text.match(recPattern);
+  if (recMatch && recMatch[1]) {
+    const items = recMatch[1].split(/[•\-\*\n]/).filter(item => item.trim().length > 10);
+    recommendations.push(...items.slice(0, 3).map(item => item.trim()));
+  }
+  
   return {
-    scores,
-    feedback: feedbackSections.slice(0, 4).map(section => section.trim()),
-    strengths: extractBulletPoints(text, ['strength', 'positive', 'good', 'excellent']),
-    improvements: extractBulletPoints(text, ['improve', 'enhance', 'develop', 'consider']),
-    confidence,
-    reasoning: text.substring(0, 500) + (text.length > 500 ? '...' : '')
+    score: Math.max(0, Math.min(100, score)),
+    feedback: `Based on evaluation of ${metric.name}: ${text.slice(0, 300)}...`,
+    confidence: Math.max(0, Math.min(100, confidence)),
+    reasoning: text.slice(0, 500),
+    specificStrengths: strengths.length > 0 ? strengths : ['Evaluation completed'],
+    specificWeaknesses: weaknesses.length > 0 ? weaknesses : ['Areas for improvement identified'],
+    recommendations: recommendations.length > 0 ? recommendations : ['Continue following engineering best practices']
   };
 }
-
-function extractBulletPoints(text, keywords) {
-  const points = [];
-  const sentences = text.split(/[.!?]+/);
-  
-  sentences.forEach(sentence => {
-    for (const keyword of keywords) {
-      if (sentence.toLowerCase().includes(keyword) && sentence.trim().length > 20) {
-        points.push(sentence.trim());
-        break;
-      }
-    }
-  });
-  
-  return points.slice(0, 3); // Limit to 3 points
-}
-
-function normalizeAgentResponse(response, metrics) {
-  // Ensure all required fields exist
-  const normalized = {
-    scores: {},
-    feedback: Array.isArray(response.feedback) ? response.feedback : [response.feedback || 'Evaluation completed.'],
-    strengths: Array.isArray(response.strengths) ? response.strengths : [],
-    improvements: Array.isArray(response.improvements) ? response.improvements : [],
-    confidence: typeof response.confidence === 'number' ? 
-                Math.min(100, Math.max(0, response.confidence)) : 85,
-    reasoning: response.reasoning || 'Assessment completed using AI analysis.'
-  };
-
-  // Normalize scores for all metrics
-  metrics.forEach(metric => {
-    const metricKey = metric.name.toLowerCase().replace(/ /g, '_');
-    const scoreValue = response.scores?.[metricKey] || response.scores?.[metric.name] || response.scores?.[metric.name.toLowerCase()];
     
-    if (typeof scoreValue === 'number') {
-      normalized.scores[metricKey] = Math.min(100, Math.max(0, Math.round(scoreValue)));
-    } else {
-      // Generate a reasonable score based on feedback sentiment
-      normalized.scores[metricKey] = generateFallbackScore(normalized.feedback, normalized.strengths, normalized.improvements);
-    }
-  });
-
-  return normalized;
-}
-
-function generateFallbackScore(feedback, strengths, improvements) {
-  // Simple sentiment analysis for fallback scoring
-  const feedbackText = (feedback || []).join(' ').toLowerCase();
-  const strengthsText = (strengths || []).join(' ').toLowerCase();
-  const improvementsText = (improvements || []).join(' ').toLowerCase();
-  
-  let score = 75; // Base score
-  
-  // Positive indicators
-  const positiveWords = ['excellent', 'good', 'strong', 'clear', 'well', 'effective', 'thorough'];
-  const negativeWords = ['poor', 'weak', 'unclear', 'lacking', 'insufficient', 'confusing'];
-  
-  positiveWords.forEach(word => {
-    if (feedbackText.includes(word) || strengthsText.includes(word)) {
-      score += 3;
-    }
-  });
-  
-  negativeWords.forEach(word => {
-    if (feedbackText.includes(word) || improvementsText.includes(word)) {
-      score -= 2;
-    }
-  });
-  
-  // Adjust based on feedback length (more detailed = likely more thorough evaluation)
-  if (feedbackText.length > 200) score += 2;
-  if (strengthsText.length > 100) score += 2;
-  
-  return Math.min(95, Math.max(60, score));
-}

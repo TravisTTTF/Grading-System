@@ -10,83 +10,42 @@ exports.handler = async (event, context) => {
     return { statusCode: 200, headers };
   }
 
-  if (event.httpMethod !== 'POST') {
-    return {
-      statusCode: 405,
-      headers,
-      body: JSON.stringify({ error: 'Method not allowed' })
-    };
-  }
-
   try {
-    const { agentResults, metrics, teacherGuidelines } = JSON.parse(event.body);
+    const { metricEvaluations, metric, teacherGuidelines } = JSON.parse(event.body);
 
-    // Validate input
-    if (!agentResults || !metrics) {
-      return {
-        statusCode: 400,
-        headers,
-        body: JSON.stringify({ 
-          success: false, 
-          error: 'Missing required parameters: agentResults or metrics' 
-        })
-      };
-    }
+    const systemPrompt = `You are a Consensus Moderator AI specializing in engineering report evaluation.
 
-    // Check if OpenAI API key is configured
-    if (!process.env.OPENAI_API_KEY) {
-      console.log('OpenAI API key not found, using fallback consensus');
-      const fallbackConsensus = generateFallbackConsensus(agentResults, metrics);
-      return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify({
-          success: true,
-          consensus: fallbackConsensus
-        })
-      };
-    }
+Your task is to synthesize evaluations from multiple expert agents for a specific metric and provide a balanced consensus.
 
-    const systemPrompt = `You are a Consensus Moderator AI agent responsible for synthesizing evaluations from multiple expert agents to reach fair, balanced consensus scores.
+Metric Being Evaluated: ${metric.name}
+Metric Description: ${metric.description}
+Metric Weight: ${metric.weight}%
 
-Your responsibilities:
-1. Analyze individual agent assessments for patterns, agreements, and disagreements
-2. Identify potential biases, outliers, or inconsistencies in agent evaluations
-3. Generate balanced consensus scores for each metric based on evidence and reasoning
-4. Provide meta-feedback on the evaluation process quality
-5. Flag areas that may need human review due to significant disagreements or concerns
+Agent Evaluations to Synthesize:
+${JSON.stringify(metricEvaluations, null, 2)}
 
-Agent Evaluation Results:
-${JSON.stringify(agentResults, null, 2)}
+${teacherGuidelines ? `Teacher Guidelines:\n${teacherGuidelines}` : ''}
 
-Evaluation Metrics:
-${metrics.map(metric => `- ${metric.name} (${metric.weight}%): ${metric.description}`).join('\n')}
+Provide your consensus analysis considering:
+1. Give more weight to the primary evaluator's assessment (60% weight)
+2. Consider supporting evaluators' perspectives (40% weight total)
+3. Identify areas of agreement and disagreement
+4. Flag any significant discrepancies for instructor review
+5. Ensure the final score aligns with engineering industry standards
 
-${teacherGuidelines ? `Teacher Guidelines:\n${teacherGuidelines}\n` : ''}
-
-Analyze the agent results and provide your consensus assessment in this exact JSON format:
+Format your response as JSON:
 {
-  "consensusScores": {
-    "${metrics.map(m => `"${m.name.toLowerCase().replace(/ /g, '_')}": final_score`).join(',\n    ')}
-  },
-  "agreements": [
-    "specific areas where agents strongly agree and why",
-    "another area of agreement"
-  ],
-  "disagreements": [
-    "specific areas where agents disagree significantly and the nature of disagreement",
-    "another area of disagreement"
-  ],
-  "confidence": overall_confidence_percentage_0_to_100,
-  "flagsForReview": [
-    "specific areas needing human attention due to disagreements or concerns",
-    "another flag if applicable"
-  ],
-  "metaFeedback": "overall assessment of evaluation quality, reliability, and any patterns observed",
-  "methodology": "clear explanation of how you reached consensus scores and weighted different agent perspectives"
-}
-
-Be thorough, analytical, and focus on reaching fair consensus scores that reflect the best collective judgment of the agents.`;
+  "consensusScore": weighted_final_score,
+  "reasoning": "explanation of how consensus was reached",
+  "agreements": ["area of agreement 1", "area of agreement 2"],
+  "disagreements": ["area of disagreement 1", "area of disagreement 2"],
+  "confidence": overall_confidence_percentage,
+  "flagsForReview": ["specific concerns needing instructor attention"],
+  "synthesizedFeedback": "comprehensive feedback combining all perspectives",
+  "keyStrengths": ["main strength from consensus", "another strength"],
+  "keyWeaknesses": ["main weakness from consensus", "another weakness"],
+  "priorityRecommendations": ["top recommendation", "second recommendation"]
+}`;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -103,16 +62,15 @@ Be thorough, analytical, and focus on reaching fair consensus scores that reflec
           },
           {
             role: 'user',
-            content: 'Please analyze the agent evaluation results and provide your consensus assessment following the specified JSON format.'
+            content: 'Please analyze the agent evaluations and provide your consensus assessment for this specific metric.'
           }
         ],
-        temperature: 0.2,
-        max_tokens: 2500
+        temperature: 0.2, // Low temperature for consistent consensus
+        max_tokens: 2000
       })
     });
 
     if (!response.ok) {
-      console.error('OpenAI API error:', response.status);
       throw new Error(`OpenAI API error: ${response.status}`);
     }
 
@@ -121,177 +79,123 @@ Be thorough, analytical, and focus on reaching fair consensus scores that reflec
 
     let parsedResponse;
     try {
-      // Clean the response
-      const cleanedResponse = aiResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '');
-      parsedResponse = JSON.parse(cleanedResponse);
+      parsedResponse = JSON.parse(aiResponse);
     } catch (parseError) {
-      console.error('Consensus JSON parsing failed, using fallback:', parseError);
-      parsedResponse = generateFallbackConsensus(agentResults, metrics);
+      // Fallback consensus calculation
+      parsedResponse = calculateFallbackConsensus(metricEvaluations, metric);
     }
 
-    // Validate and normalize consensus response
-    const normalizedConsensus = normalizeConsensusResponse(parsedResponse, agentResults, metrics);
+    // Validate and ensure all fields are present
+    const validatedResponse = {
+      consensusScore: parsedResponse.consensusScore || calculateWeightedScore(metricEvaluations),
+      reasoning: parsedResponse.reasoning || 'Consensus reached through weighted evaluation',
+      agreements: parsedResponse.agreements || ['General consensus on evaluation'],
+      disagreements: parsedResponse.disagreements || [],
+      confidence: parsedResponse.confidence || 85,
+      flagsForReview: parsedResponse.flagsForReview || [],
+      synthesizedFeedback: parsedResponse.synthesizedFeedback || 'Comprehensive evaluation completed',
+      keyStrengths: parsedResponse.keyStrengths || [],
+      keyWeaknesses: parsedResponse.keyWeaknesses || [],
+      priorityRecommendations: parsedResponse.priorityRecommendations || []
+    };
 
     return {
       statusCode: 200,
       headers,
       body: JSON.stringify({
         success: true,
-        consensus: normalizedConsensus
+        consensus: validatedResponse
       })
     };
 
   } catch (error) {
     console.error('Consensus error:', error);
-    
-    // Fallback to mathematical consensus
-    try {
-      const { agentResults, metrics } = JSON.parse(event.body);
-      const fallbackConsensus = generateFallbackConsensus(agentResults, metrics);
-      
-      return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify({
-          success: true,
-          consensus: fallbackConsensus,
-          note: 'Generated using fallback consensus method due to API error'
-        })
-      };
-    } catch (fallbackError) {
-      return {
-        statusCode: 500,
-        headers,
-        body: JSON.stringify({
-          success: false,
-          error: error.message
-        })
-      };
-    }
+    return {
+      statusCode: 500,
+      headers,
+      body: JSON.stringify({
+        success: false,
+        error: error.message
+      })
+    };
   }
 };
 
-function generateFallbackConsensus(agentResults, metrics) {
-  const consensusScores = {};
+function calculateWeightedScore(evaluations) {
+  let totalScore = 0;
+  let totalWeight = 0;
+  
+  evaluations.forEach(eval => {
+    const weight = eval.isPrimary ? 0.6 : (0.4 / Math.max(1, evaluations.length - 1));
+    if (eval.evaluation && eval.evaluation.score !== undefined) {
+      totalScore += eval.evaluation.score * weight;
+      totalWeight += weight;
+    }
+  });
+  
+  return totalWeight > 0 ? Math.round(totalScore / totalWeight) : 75;
+}
+
+function calculateFallbackConsensus(evaluations, metric) {
+  const scores = evaluations.map(e => e.evaluation?.score || 75);
+  const weightedScore = calculateWeightedScore(evaluations);
+  
+  const maxScore = Math.max(...scores);
+  const minScore = Math.min(...scores);
+  const range = maxScore - minScore;
+  
   const agreements = [];
   const disagreements = [];
   const flagsForReview = [];
-
-  metrics.forEach(metric => {
-    const metricName = metric.name.toLowerCase().replace(/ /g, '_');
-    const scores = Object.values(agentResults)
-      .map(result => {
-        return result.scores[metricName] || 
-               result.scores[metric.name] || 
-               result.scores[metric.name.toLowerCase()] ||
-               75; // Default score
-      })
-      .filter(score => typeof score === 'number');
-
-    if (scores.length > 0) {
-      // Calculate statistics
-      const average = scores.reduce((sum, score) => sum + score, 0) / scores.length;
-      const max = Math.max(...scores);
-      const min = Math.min(...scores);
-      const range = max - min;
-      const median = calculateMedian(scores);
-      
-      // Use weighted average favoring median for outlier resistance
-      const consensusScore = Math.round((average * 0.6) + (median * 0.4));
-      consensusScores[metricName] = Math.min(100, Math.max(0, consensusScore));
-
-      // Analyze agreement level
-      if (range <= 5) {
-        agreements.push(`Strong agreement on ${metric.name} (range: ${range} points, consensus: ${consensusScore}%)`);
-      } else if (range <= 10) {
-        agreements.push(`Moderate agreement on ${metric.name} (range: ${range} points, consensus: ${consensusScore}%)`);
-      } else if (range <= 20) {
-        disagreements.push(`Noticeable disagreement on ${metric.name} (range: ${range} points, scores: ${scores.join(', ')})`);
-      } else {
-        disagreements.push(`Significant disagreement on ${metric.name} (range: ${range} points, scores: ${scores.join(', ')})`);
-        flagsForReview.push(`Large score variance in ${metric.name} requires human review`);
-      }
-    } else {
-      // No valid scores found
-      consensusScores[metricName] = 75;
-      flagsForReview.push(`No valid scores found for ${metric.name}`);
-    }
-  });
-
-  // Calculate overall confidence
-  const confidenceFactors = {
-    agreementRatio: agreements.length / (agreements.length + disagreements.length),
-    flagCount: flagsForReview.length,
-    dataQuality: Object.keys(agentResults).length >= 3 ? 1 : 0.8
-  };
-
-  const baseConfidence = 85;
-  const confidenceAdjustment = 
-    (confidenceFactors.agreementRatio - 0.5) * 20 - // Agreement impact
-    (confidenceFactors.flagCount * 5) + // Flag penalty
-    ((confidenceFactors.dataQuality - 1) * 10); // Data quality bonus/penalty
-
-  const confidence = Math.min(98, Math.max(50, baseConfidence + confidenceAdjustment));
-
-  return {
-    consensusScores,
-    agreements,
-    disagreements,
-    confidence: Math.round(confidence),
-    flagsForReview,
-    metaFeedback: `Consensus reached through statistical analysis. ${agreements.length} areas of agreement, ${disagreements.length} areas of disagreement. ${flagsForReview.length > 0 ? 'Some areas flagged for review.' : 'No major concerns identified.'}`,
-    methodology: 'Weighted average of agent scores (60% mean, 40% median) with outlier detection and agreement analysis'
-  };
-}
-
-function calculateMedian(numbers) {
-  const sorted = [...numbers].sort((a, b) => a - b);
-  const middle = Math.floor(sorted.length / 2);
   
-  if (sorted.length % 2 === 0) {
-    return (sorted[middle - 1] + sorted[middle]) / 2;
+  if (range <= 5) {
+    agreements.push(`Strong consensus on ${metric.name} evaluation (range: ${range} points)`);
+  } else if (range <= 10) {
+    agreements.push(`General agreement on ${metric.name} with minor variations (range: ${range} points)`);
   } else {
-    return sorted[middle];
-  }
-}
-
-function normalizeConsensusResponse(response, agentResults, metrics) {
-  // Ensure all required fields exist with proper structure
-  const normalized = {
-    consensusScores: {},
-    agreements: Array.isArray(response.agreements) ? response.agreements : [],
-    disagreements: Array.isArray(response.disagreements) ? response.disagreements : [],
-    confidence: typeof response.confidence === 'number' ? 
-               Math.min(100, Math.max(0, response.confidence)) : 75,
-    flagsForReview: Array.isArray(response.flagsForReview) ? response.flagsForReview : [],
-    metaFeedback: response.metaFeedback || 'Consensus analysis completed.',
-    methodology: response.methodology || 'AI-based consensus analysis'
-  };
-
-  // Normalize consensus scores
-  metrics.forEach(metric => {
-    const metricKey = metric.name.toLowerCase().replace(/ /g, '_');
-    let consensusScore = response.consensusScores?.[metricKey] || 
-                        response.consensusScores?.[metric.name] ||
-                        response.consensusScores?.[metric.name.toLowerCase()];
-
-    if (typeof consensusScore !== 'number') {
-      // Generate fallback score from agent results
-      const agentScores = Object.values(agentResults)
-        .map(result => result.scores[metricKey] || result.scores[metric.name] || 75)
-        .filter(score => typeof score === 'number');
-      
-      consensusScore = agentScores.length > 0 ? 
-        Math.round(agentScores.reduce((sum, score) => sum + score, 0) / agentScores.length) : 75;
+    disagreements.push(`Significant variation in ${metric.name} scores (range: ${range} points)`);
+    if (range > 15) {
+      flagsForReview.push(`Large score discrepancy (${range} points) requires instructor review`);
     }
-
-    normalized.consensusScores[metricKey] = Math.min(100, Math.max(0, Math.round(consensusScore)));
-  });
-
-  // Validate arrays have reasonable content
-  if (normalized.agreements.length === 0) {
-    normalized.agreements.push('General alignment observed among evaluators');
   }
-
-  return normalized;
+  
+  // Check for low scores
+  if (weightedScore < 70) {
+    flagsForReview.push(`Score below industry standard (70%) - requires attention`);
+  }
+  
+  // Aggregate strengths and weaknesses
+  const allStrengths = [];
+  const allWeaknesses = [];
+  
+  evaluations.forEach(eval => {
+    if (eval.evaluation) {
+      if (eval.evaluation.specificStrengths) {
+        allStrengths.push(...eval.evaluation.specificStrengths);
+      }
+      if (eval.evaluation.specificWeaknesses) {
+        allWeaknesses.push(...eval.evaluation.specificWeaknesses);
+      }
+    }
+  });
+  
+  // Get unique top items
+  const keyStrengths = [...new Set(allStrengths)].slice(0, 2);
+  const keyWeaknesses = [...new Set(allWeaknesses)].slice(0, 2);
+  
+  const avgConfidence = evaluations.reduce((sum, e) => 
+    sum + (e.evaluation?.confidence || 80), 0) / evaluations.length;
+  
+  return {
+    consensusScore: weightedScore,
+    reasoning: `Weighted consensus: Primary evaluator (60%), Supporting evaluators (${40 / Math.max(1, evaluations.length - 1)}% each)`,
+    agreements: agreements,
+    disagreements: disagreements,
+    confidence: Math.round(avgConfidence),
+    flagsForReview: flagsForReview,
+    synthesizedFeedback: `Based on ${evaluations.length} expert evaluations for ${metric.name}`,
+    keyStrengths: keyStrengths.length > 0 ? keyStrengths : ['Meets basic requirements'],
+    keyWeaknesses: keyWeaknesses.length > 0 ? keyWeaknesses : ['Areas for improvement identified'],
+    priorityRecommendations: ['Focus on addressing identified weaknesses', 'Build upon existing strengths']
+  };
 }
