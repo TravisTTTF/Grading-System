@@ -259,7 +259,7 @@
                     setProgress(95);
 
                     for (const metric of metrics) {
-                        const metricName = metric.name.toLowerCase();
+                        const metricName = metric.name.toLowerCase().replace(/ /g, '_');
                         const agentScores = agents.map(agent => {
                             const agentResult = agentResultsData[agent.id];
                             const score = agentResult?.scores?.[metricName] || 75;
@@ -322,7 +322,8 @@
             const generateFallbackAgentResult = (metrics) => {
                 const scores = {};
                 metrics.forEach(metric => {
-                    scores[metric.name.toLowerCase()] = Math.floor(Math.random() * 25) + 70; // 70-95
+                    const metricKey = metric.name.toLowerCase().replace(/ /g, '_');
+                    scores[metricKey] = Math.floor(Math.random() * 25) + 70; // 70-95
                 });
 
                 return {
@@ -337,7 +338,7 @@
                 const consensusScores = {};
                 
                 metrics.forEach(metric => {
-                    const metricName = metric.name.toLowerCase();
+                    const metricName = metric.name.toLowerCase().replace(/ /g, '_');
                     const scores = Object.values(agentResultsData)
                         .map(result => result.scores[metricName])
                         .filter(score => score !== undefined);
