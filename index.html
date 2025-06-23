@@ -34,6 +34,7 @@
             const [progress, setProgress] = useState(0);
             const [currentProgressMessage, setCurrentProgressMessage] = useState('');
             const [agentResults, setAgentResults] = useState({});
+            const [apiError, setApiError] = useState('');
 
             // Engineering-specific metrics with specialized agent assignments
             const [metrics, setMetrics] = useState([
@@ -226,6 +227,7 @@
                 }
                 
                 setPhase('grading');
+                setApiError('');
                 performSpecializedGrading();
             };
 
@@ -313,13 +315,12 @@
                             }
                         });
                         
-                        // Calculate consensus with weighted importance
-                        const consensusScore = calculateWeightedConsensus(metricEvaluations);
-                        const dialogue = generateSpecializedDialogue(metricEvaluations, metric, consensusScore);
+                        // Get consensus from API
+                        const consensusResult = await getConsensusFromAPI(metricEvaluations, metric, rubricText);
                         
                         results.push({
                             ...metric,
-                            score: consensusScore.score,
+                            score: consensusResult.consensusScore,
                             agentScores: metricEvaluations.map(e => ({
                                 agent: e.agent.name,
                                 score: e.evaluation.score,
@@ -327,13 +328,13 @@
                                 confidence: e.evaluation.confidence,
                                 isPrimary: e.isPrimary
                             })),
-                            consensus: consensusScore.score,
-                            consensusReasoning: consensusScore.reasoning,
-                            feedback: consensusScore.feedback,
-                            dialogue: dialogue,
-                            agreements: consensusScore.agreements,
-                            disagreements: consensusScore.disagreements,
-                            flagsForReview: consensusScore.flagsForReview
+                            consensus: consensusResult.consensusScore,
+                            consensusReasoning: consensusResult.reasoning,
+                            feedback: consensusResult.synthesizedFeedback,
+                            dialogue: generateSpecializedDialogue(metricEvaluations, metric, consensusResult),
+                            agreements: consensusResult.agreements,
+                            disagreements: consensusResult.disagreements,
+                            flagsForReview: consensusResult.flagsForReview
                         });
                     }
                     
@@ -345,7 +346,8 @@
                     
                 } catch (error) {
                     console.error('Error in specialized grading:', error);
-                    alert('Error during AI grading. Please try again.');
+                    setApiError(`API Error: ${error.message}`);
+                    alert(`Error during AI grading: ${error.message}`);
                     setLoading(false);
                     setPhase('setup');
                 }
@@ -357,7 +359,7 @@
                         agentId: agent.id,
                         agentPrompt: agent.expertise,
                         content: reportText,
-                        specificMetric: metric, // Pass the specific metric to evaluate
+                        specificMetric: metric,
                         teacherGuidelines: rubricText,
                         apiSettings: apiSettings
                     });
@@ -369,78 +371,57 @@
                     }
                 } catch (error) {
                     console.error(`Error with ${agent.name}:`, error);
-                    // Fallback scoring
-                    return {
-                        score: Math.floor(Math.random() * 20) + 75,
-                        feedback: `Evaluation completed for ${metric.name}.`,
-                        confidence: 75,
-                        reasoning: 'Fallback evaluation due to API error.'
-                    };
+                    throw error; // 重要：不要返回模拟数据，而是抛出错误
+                }
+            };
+
+            const getConsensusFromAPI = async (metricEvaluations, metric, teacherGuidelines) => {
+                try {
+                    const response = await callNetlifyFunction('consensus-moderator', {
+                        metricEvaluations: metricEvaluations,
+                        metric: metric,
+                        teacherGuidelines: teacherGuidelines
+                    });
+                    
+                    if (response.success) {
+                        return response.consensus;
+                    } else {
+                        throw new Error(`Consensus failed: ${response.error}`);
+                    }
+                } catch (error) {
+                    console.error('Error getting consensus:', error);
+                    throw error; // 重要：不要返回模拟数据，而是抛出错误
                 }
             };
 
             const callNetlifyFunction = async (functionName, payload) => {
-                const response = await fetch(`/.netlify/functions/${functionName}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(payload)
-                });
+                try {
+                    console.log(`Calling ${functionName} with:`, payload);
+                    
+                    const response = await fetch(`/.netlify/functions/${functionName}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(payload)
+                    });
 
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
+                    const responseText = await response.text();
+                    console.log(`Response from ${functionName}:`, responseText);
 
-                return await response.json();
-            };
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}, response: ${responseText}`);
+                    }
 
-            const calculateWeightedConsensus = (evaluations) => {
-                // Primary agent has 60% weight, supporting agents share 40%
-                let totalScore = 0;
-                let totalWeight = 0;
-                const agreements = [];
-                const disagreements = [];
-                const flagsForReview = [];
-                
-                evaluations.forEach(evalItem => {
-                    const weight = evalItem.isPrimary ? 0.6 : (0.4 / (evaluations.length - 1));
-                    totalScore += evalItem.evaluation.score * weight;
-                    totalWeight += weight;
-                });
-                
-                const finalScore = Math.round(totalScore / totalWeight);
-                
-                // Check for agreement/disagreement
-                const scores = evaluations.map(e => e.evaluation.score);
-                const maxScore = Math.max(...scores);
-                const minScore = Math.min(...scores);
-                const range = maxScore - minScore;
-                
-                if (range <= 5) {
-                    agreements.push('Strong consensus among evaluators');
-                } else if (range <= 10) {
-                    agreements.push('General agreement with minor variations');
-                } else {
-                    disagreements.push(`Significant score variation (${range} points)`);
-                    flagsForReview.push('Large discrepancy requires instructor review');
+                    try {
+                        return JSON.parse(responseText);
+                    } catch (e) {
+                        throw new Error(`Invalid JSON response: ${responseText}`);
+                    }
+                } catch (error) {
+                    console.error(`Error calling ${functionName}:`, error);
+                    throw error;
                 }
-                
-                // Check confidence levels
-                const avgConfidence = evaluations.reduce((sum, e) => sum + e.evaluation.confidence, 0) / evaluations.length;
-                if (avgConfidence < 70) {
-                    flagsForReview.push('Low AI confidence - manual review recommended');
-                }
-                
-                return {
-                    score: finalScore,
-                    reasoning: `Weighted consensus: Primary expert (60%), Supporting experts (40%)`,
-                    feedback: `Based on specialized evaluation by ${evaluations.length} expert agents`,
-                    agreements,
-                    disagreements,
-                    flagsForReview,
-                    confidence: avgConfidence
-                };
             };
 
             const generateSpecializedDialogue = (evaluations, metric, consensusScore) => {
@@ -458,11 +439,11 @@
                 }
                 
                 // Supporting agents
-                evaluations.filter(e => !e.isPrimary).forEach(evalItem => {
+                evaluations.filter(e => !e.isPrimary).forEach(eval => {
                     dialogue.push({
-                        agent: evalItem.agent.name,
-                        emoji: evalItem.agent.emoji,
-                        message: `From my perspective, I evaluated this at ${evalItem.evaluation.score}/100. ${evalItem.evaluation.feedback}`,
+                        agent: eval.agent.name,
+                        emoji: eval.agent.emoji,
+                        message: `From my perspective, I evaluated this at ${eval.evaluation.score}/100. ${eval.evaluation.feedback}`,
                         type: 'supporting-evaluation'
                     });
                 });
@@ -471,7 +452,7 @@
                 dialogue.push({
                     agent: 'Consensus',
                     emoji: '🎯',
-                    message: `Final weighted score for ${metric.name}: ${consensusScore.score}/100. ${consensusScore.reasoning}`,
+                    message: `Final weighted score for ${metric.name}: ${consensusScore.consensusScore}/100. ${consensusScore.reasoning}`,
                     type: 'consensus'
                 });
                 
@@ -526,6 +507,7 @@
                     setGradingResults([]);
                     setProgress(0);
                     setAgentResults({});
+                    setApiError('');
                 }
             };
 
@@ -539,6 +521,14 @@
                             <span className="text-sm font-medium">🤖 Powered by GPT-4 with Engineering Expertise</span>
                         </div>
                     </div>
+
+                    {/* API Error Display */}
+                    {apiError && (
+                        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
+                            <strong className="font-bold">API Error!</strong>
+                            <span className="block sm:inline"> {apiError}</span>
+                        </div>
+                    )}
 
                     {/* Progress Bar */}
                     <div className="bg-white rounded-lg shadow-md p-4">
@@ -660,45 +650,6 @@
                                                             const updated = [...metrics];
                                                             updated[index].description = e.target.value;
                                                             setMetrics(updated);
-                                                        }}
-                                                        className="w-full px-3 py-2 border rounded-lg text-sm"
-                                                        rows="2"
-                                                        placeholder="Detailed evaluation criteria..."
-                                                    />
-                                                    <div className="mt-2 text-xs text-gray-600">
-                                                        <span className="font-medium">Primary Evaluator:</span> {agents.find(a => a.id === metric.primaryAgent)?.name || 'Not assigned'}
-                                                        {metric.supportingAgents && metric.supportingAgents.length > 0 && (
-                                                            <span className="ml-2">
-                                                                <span className="font-medium">Supporting:</span> {metric.supportingAgents.map(id => agents.find(a => a.id === id)?.name).join(', ')}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                    <div className="text-sm text-gray-600">
-                                        Total Weight: {metrics.reduce((sum, m) => sum + m.weight, 0)}%
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Specialized AI Agents */}
-                            <div className="bg-white rounded-lg shadow-md p-6">
-                                <h3 className="text-lg font-semibold mb-3">🤖 Specialized Engineering Evaluators</h3>
-                                <div className="space-y-3">
-                                    {agents.map((agent, index) => (
-                                        <div key={index} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                                            <div className="flex items-start gap-3">
-                                                <div className="text-3xl">{agent.emoji}</div>
-                                                <div className="flex-1">
-                                                    <h4 className="font-semibold text-lg mb-1">{agent.name}</h4>
-                                                    <textarea
-                                                        value={agent.expertise}
-                                                        onChange={(e) => {
-                                                            const updated = [...agents];
-                                                            updated[index].expertise = e.target.value;
-                                                            setAgents(updated);
                                                         }}
                                                         className="w-full px-3 py-2 border rounded-lg text-sm"
                                                         rows="4"
@@ -901,7 +852,7 @@
                                         Apply Instructor Adjustments
                                     </button>
                                     <button
-                                        onClick={() => { setPhase('grading'); performSpecializedGrading(); }}
+                                        onClick={() => setPhase('grading') && performSpecializedGrading()}
                                         className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
                                     >
                                         Re-evaluate Report
@@ -1127,3 +1078,43 @@
     </script>
 </body>
 </html>
+                                                        rows="2"
+                                                        placeholder="Detailed evaluation criteria..."
+                                                    />
+                                                    <div className="mt-2 text-xs text-gray-600">
+                                                        <span className="font-medium">Primary Evaluator:</span> {agents.find(a => a.id === metric.primaryAgent)?.name || 'Not assigned'}
+                                                        {metric.supportingAgents && metric.supportingAgents.length > 0 && (
+                                                            <span className="ml-2">
+                                                                <span className="font-medium">Supporting:</span> {metric.supportingAgents.map(id => agents.find(a => a.id === id)?.name).join(', ')}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    <div className="text-sm text-gray-600">
+                                        Total Weight: {metrics.reduce((sum, m) => sum + m.weight, 0)}%
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Specialized AI Agents */}
+                            <div className="bg-white rounded-lg shadow-md p-6">
+                                <h3 className="text-lg font-semibold mb-3">🤖 Specialized Engineering Evaluators</h3>
+                                <div className="space-y-3">
+                                    {agents.map((agent, index) => (
+                                        <div key={index} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                                            <div className="flex items-start gap-3">
+                                                <div className="text-3xl">{agent.emoji}</div>
+                                                <div className="flex-1">
+                                                    <h4 className="font-semibold text-lg mb-1">{agent.name}</h4>
+                                                    <textarea
+                                                        value={agent.expertise}
+                                                        onChange={(e) => {
+                                                            const updated = [...agents];
+                                                            updated[index].expertise = e.target.value;
+                                                            setAgents(updated);
+                                                        }}
+                                                        className="w-full px-3 py-2 border rounded-lg text-sm"
+                                                
