@@ -143,13 +143,16 @@
                 industryStandards: true
             });
 
-            // Fixed API settings for GPT-4 only
-            const apiSettings = {
+            // Add mock mode toggle
+            const [mockMode, setMockMode] = useState(false);
+
+            // API settings with model selection
+            const [apiSettings, setApiSettings] = useState({
                 useNetlifyFunctions: true,
                 provider: 'openai',
-                model: 'gpt-4',
+                model: 'gpt-4o-mini',
                 temperature: 0.3 // Lower temperature for more consistent grading
-            };
+            });
 
             // Save and load configuration
             const saveConfiguration = () => {
@@ -157,7 +160,8 @@
                     metrics,
                     totalScore,
                     agents,
-                    supervisorSettings
+                    supervisorSettings,
+                    apiSettings
                 };
                 localStorage.setItem('engineeringGradingConfig', JSON.stringify(config));
                 alert('Configuration saved successfully!');
@@ -171,6 +175,7 @@
                         if (config.metrics) setMetrics(config.metrics);
                         if (config.totalScore) setTotalScore(config.totalScore);
                         if (config.agents) setAgents(config.agents);
+                        if (config.apiSettings) setApiSettings(config.apiSettings);
                         if (config.supervisorSettings) setSupervisorSettings(config.supervisorSettings);
                     }
                 } catch (error) {
@@ -355,6 +360,19 @@
 
             const evaluateMetricWithAgent = async (agent, metric, reportText, rubricText) => {
                 try {
+                    // Mock mode for testing without API
+                    if (mockMode) {
+                        return {
+                            score: 70 + Math.random() * 20,
+                            feedback: `Mock evaluation for ${metric.name} by ${agent.name}`,
+                            confidence: 85,
+                            reasoning: 'Mock reasoning',
+                            specificStrengths: ['Mock strength 1', 'Mock strength 2'],
+                            specificWeaknesses: ['Mock weakness 1'],
+                            recommendations: ['Mock recommendation']
+                        };
+                    }
+                    
                     const response = await callNetlifyFunction('ai-agent-grade', {
                         agentId: agent.id,
                         agentPrompt: agent.expertise,
@@ -371,16 +389,34 @@
                     }
                 } catch (error) {
                     console.error(`Error with ${agent.name}:`, error);
-                    throw error; // 重要：不要返回模拟数据，而是抛出错误
+                    throw error;
                 }
             };
 
             const getConsensusFromAPI = async (metricEvaluations, metric, teacherGuidelines) => {
                 try {
+                    // Mock mode for testing without API
+                    if (mockMode) {
+                        const avgScore = metricEvaluations.reduce((sum, e) => sum + e.evaluation.score, 0) / metricEvaluations.length;
+                        return {
+                            consensusScore: avgScore,
+                            reasoning: 'Mock consensus reasoning',
+                            agreements: ['Mock agreement'],
+                            disagreements: [],
+                            confidence: 85,
+                            flagsForReview: [],
+                            synthesizedFeedback: 'Mock synthesized feedback',
+                            keyStrengths: ['Mock strength'],
+                            keyWeaknesses: ['Mock weakness'],
+                            priorityRecommendations: ['Mock recommendation']
+                        };
+                    }
+                    
                     const response = await callNetlifyFunction('consensus-moderator', {
                         metricEvaluations: metricEvaluations,
                         metric: metric,
-                        teacherGuidelines: teacherGuidelines
+                        teacherGuidelines: teacherGuidelines,
+                        apiSettings: apiSettings
                     });
                     
                     if (response.success) {
@@ -390,7 +426,7 @@
                     }
                 } catch (error) {
                     console.error('Error getting consensus:', error);
-                    throw error; // 重要：不要返回模拟数据，而是抛出错误
+                    throw error;
                 }
             };
 
@@ -398,26 +434,48 @@
                 try {
                     console.log(`Calling ${functionName} with:`, payload);
                     
-                    const response = await fetch(`/.netlify/functions/${functionName}`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify(payload)
-                    });
+                    // Try different URL patterns based on environment
+                    const urls = [
+                        `/.netlify/functions/${functionName}`,
+                        `/netlify/functions/${functionName}`,
+                        `${window.location.origin}/.netlify/functions/${functionName}`
+                    ];
+                    
+                    let lastError = null;
+                    
+                    for (const url of urls) {
+                        try {
+                            console.log(`Trying URL: ${url}`);
+                            const response = await fetch(url, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify(payload)
+                            });
 
-                    const responseText = await response.text();
-                    console.log(`Response from ${functionName}:`, responseText);
+                            const responseText = await response.text();
+                            console.log(`Response from ${functionName}:`, responseText);
 
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}, response: ${responseText}`);
+                            if (!response.ok) {
+                                lastError = new Error(`HTTP error! status: ${response.status}, response: ${responseText}`);
+                                continue;
+                            }
+
+                            try {
+                                return JSON.parse(responseText);
+                            } catch (e) {
+                                lastError = new Error(`Invalid JSON response: ${responseText}`);
+                                continue;
+                            }
+                        } catch (error) {
+                            console.log(`Failed with URL ${url}:`, error.message);
+                            lastError = error;
+                            continue;
+                        }
                     }
-
-                    try {
-                        return JSON.parse(responseText);
-                    } catch (e) {
-                        throw new Error(`Invalid JSON response: ${responseText}`);
-                    }
+                    
+                    throw lastError || new Error('All URL patterns failed');
                 } catch (error) {
                     console.error(`Error calling ${functionName}:`, error);
                     throw error;
@@ -518,7 +576,7 @@
                         <h1 className="text-4xl font-bold text-gray-800 mb-2">🏗️ Engineering Report Grading System</h1>
                         <p className="text-gray-600">Specialized AI evaluation for technical engineering documents</p>
                         <div className="mt-2 px-4 py-2 bg-blue-100 text-blue-800 rounded-lg inline-block">
-                            <span className="text-sm font-medium">🤖 Powered by GPT-4 with Engineering Expertise</span>
+                            <span className="text-sm font-medium">🤖 Powered by {apiSettings.model.toUpperCase()} with Engineering Expertise</span>
                         </div>
                     </div>
 
@@ -527,6 +585,26 @@
                         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
                             <strong className="font-bold">API Error!</strong>
                             <span className="block sm:inline"> {apiError}</span>
+                            <button
+                                onClick={() => setMockMode(true)}
+                                className="mt-2 px-3 py-1 bg-red-600 text-white rounded text-sm hover:bg-red-700"
+                            >
+                                Enable Mock Mode (Test Without API)
+                            </button>
+                        </div>
+                    )}
+                    
+                    {/* Mock Mode Indicator */}
+                    {mockMode && (
+                        <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded">
+                            <strong className="font-bold">Mock Mode Active!</strong>
+                            <span className="block sm:inline"> Running in test mode without actual API calls.</span>
+                            <button
+                                onClick={() => setMockMode(false)}
+                                className="ml-2 text-sm underline"
+                            >
+                                Disable Mock Mode
+                            </button>
                         </div>
                     )}
 
@@ -701,6 +779,63 @@
                                 </div>
                             </div>
 
+                            {/* API Settings */}
+                            <div className="bg-white rounded-lg shadow-md p-6">
+                                <h3 className="text-lg font-semibold mb-3">🔧 API Settings</h3>
+                                <div className="grid md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium mb-2">AI Model</label>
+                                        <select
+                                            value={apiSettings.model}
+                                            onChange={(e) => setApiSettings({...apiSettings, model: e.target.value})}
+                                            className="w-full px-3 py-2 border rounded-lg"
+                                        >
+                                            <optgroup label="OpenAI Models">
+                                                <option value="gpt-4o-mini">GPT-4o Mini (Fast & Cost-effective)</option>
+                                                <option value="gpt-4o">GPT-4o (Balanced)</option>
+                                                <option value="gpt-4-turbo">GPT-4 Turbo (128k context)</option>
+                                                <option value="gpt-4">GPT-4 (8k context)</option>
+                                                <option value="gpt-3.5-turbo">GPT-3.5 Turbo (Budget option)</option>
+                                            </optgroup>
+                                        </select>
+                                        <p className="text-xs text-gray-500 mt-1">
+                                            {apiSettings.model === 'gpt-4o-mini' && 'Recommended: Best balance of quality and cost'}
+                                            {apiSettings.model === 'gpt-4o' && 'High quality with large context window'}
+                                            {apiSettings.model === 'gpt-4-turbo' && 'Maximum context for very long reports'}
+                                            {apiSettings.model === 'gpt-4' && 'Original GPT-4, limited context'}
+                                            {apiSettings.model === 'gpt-3.5-turbo' && 'Faster but less accurate for complex analysis'}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-2">Temperature</label>
+                                        <input
+                                            type="range"
+                                            min="0"
+                                            max="1"
+                                            step="0.1"
+                                            value={apiSettings.temperature}
+                                            onChange={(e) => setApiSettings({...apiSettings, temperature: parseFloat(e.target.value)})}
+                                            className="w-full"
+                                        />
+                                        <div className="flex justify-between text-xs text-gray-500">
+                                            <span>Consistent (0)</span>
+                                            <span className="font-medium">{apiSettings.temperature}</span>
+                                            <span>Creative (1)</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                                    <p className="text-sm text-blue-800">
+                                        <strong>Token Limits:</strong>
+                                        {apiSettings.model === 'gpt-4o-mini' && ' 128k context window, suitable for most reports'}
+                                        {apiSettings.model === 'gpt-4o' && ' 128k context window, high quality analysis'}
+                                        {apiSettings.model === 'gpt-4-turbo' && ' 128k context window, best for very long reports'}
+                                        {apiSettings.model === 'gpt-4' && ' 8k context window, may need shorter reports'}
+                                        {apiSettings.model === 'gpt-3.5-turbo' && ' 16k context window, basic analysis'}
+                                    </p>
+                                </div>
+                            </div>
+
                             {/* Supervisor Settings */}
                             <div className="bg-white rounded-lg shadow-md p-6">
                                 <h3 className="text-lg font-semibold mb-3">👨‍🏫 Instructor Supervision Settings</h3>
@@ -775,7 +910,7 @@
                                             <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
                                         </div>
                                         <p className="text-lg font-medium mb-2">{currentProgressMessage || 'Analyzing Engineering Report...'}</p>
-                                        <p className="text-sm text-gray-600">GPT-4 is evaluating technical content with engineering expertise</p>
+                                        <p className="text-sm text-gray-600">{apiSettings.model.toUpperCase()} is evaluating technical content with engineering expertise</p>
                                     </div>
                                     <div className="w-full bg-gray-200 rounded-full h-4">
                                         <div 
