@@ -652,6 +652,45 @@
                                                             setMetrics(updated);
                                                         }}
                                                         className="w-full px-3 py-2 border rounded-lg text-sm"
+                                                        rows="2"
+                                                        placeholder="Detailed evaluation criteria..."
+                                                    />
+                                                    <div className="mt-2 text-xs text-gray-600">
+                                                        <span className="font-medium">Primary Evaluator:</span> {agents.find(a => a.id === metric.primaryAgent)?.name || 'Not assigned'}
+                                                        {metric.supportingAgents && metric.supportingAgents.length > 0 && (
+                                                            <span className="ml-2">
+                                                                <span className="font-medium">Supporting:</span> {metric.supportingAgents.map(id => agents.find(a => a.id === id)?.name).join(', ')}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    <div className="text-sm text-gray-600">
+                                        Total Weight: {metrics.reduce((sum, m) => sum + m.weight, 0)}%
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Specialized AI Agents */}
+                            <div className="bg-white rounded-lg shadow-md p-6">
+                                <h3 className="text-lg font-semibold mb-3">🤖 Specialized Engineering Evaluators</h3>
+                                <div className="space-y-3">
+                                    {agents.map((agent, index) => (
+                                        <div key={index} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                                            <div className="flex items-start gap-3">
+                                                <div className="text-3xl">{agent.emoji}</div>
+                                                <div className="flex-1">
+                                                    <h4 className="font-semibold text-lg mb-1">{agent.name}</h4>
+                                                    <textarea
+                                                        value={agent.expertise}
+                                                        onChange={(e) => {
+                                                            const updated = [...agents];
+                                                            updated[index].expertise = e.target.value;
+                                                            setAgents(updated);
+                                                        }}
+                                                        className="w-full px-3 py-2 border rounded-lg text-sm"
                                                         rows="4"
                                                         placeholder="Agent expertise..."
                                                     />
@@ -852,7 +891,10 @@
                                         Apply Instructor Adjustments
                                     </button>
                                     <button
-                                        onClick={() => setPhase('grading') && performSpecializedGrading()}
+                                        onClick={() => {
+                                            setPhase('grading');
+                                            performSpecializedGrading();
+                                        }}
                                         className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
                                     >
                                         Re-evaluate Report
@@ -1078,43 +1120,3 @@
     </script>
 </body>
 </html>
-                                                        rows="2"
-                                                        placeholder="Detailed evaluation criteria..."
-                                                    />
-                                                    <div className="mt-2 text-xs text-gray-600">
-                                                        <span className="font-medium">Primary Evaluator:</span> {agents.find(a => a.id === metric.primaryAgent)?.name || 'Not assigned'}
-                                                        {metric.supportingAgents && metric.supportingAgents.length > 0 && (
-                                                            <span className="ml-2">
-                                                                <span className="font-medium">Supporting:</span> {metric.supportingAgents.map(id => agents.find(a => a.id === id)?.name).join(', ')}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                    <div className="text-sm text-gray-600">
-                                        Total Weight: {metrics.reduce((sum, m) => sum + m.weight, 0)}%
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Specialized AI Agents */}
-                            <div className="bg-white rounded-lg shadow-md p-6">
-                                <h3 className="text-lg font-semibold mb-3">🤖 Specialized Engineering Evaluators</h3>
-                                <div className="space-y-3">
-                                    {agents.map((agent, index) => (
-                                        <div key={index} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                                            <div className="flex items-start gap-3">
-                                                <div className="text-3xl">{agent.emoji}</div>
-                                                <div className="flex-1">
-                                                    <h4 className="font-semibold text-lg mb-1">{agent.name}</h4>
-                                                    <textarea
-                                                        value={agent.expertise}
-                                                        onChange={(e) => {
-                                                            const updated = [...agents];
-                                                            updated[index].expertise = e.target.value;
-                                                            setAgents(updated);
-                                                        }}
-                                                        className="w-full px-3 py-2 border rounded-lg text-sm"
-                                                
