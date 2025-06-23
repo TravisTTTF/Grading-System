@@ -65,7 +65,7 @@ Format your response as JSON:
   "recommendations": ["specific recommendation 1", "specific recommendation 2"]
 }`;
 
-    console.log('Calling OpenAI API with model:', apiSettings.model || 'gpt-4');
+    console.log('Calling OpenAI API with model:', apiSettings.model || 'gpt-4o-mini');
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -74,7 +74,7 @@ Format your response as JSON:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: apiSettings.model || 'gpt-4',
+        model: apiSettings.model || 'gpt-4o-mini',
         messages: [
           {
             role: 'system',

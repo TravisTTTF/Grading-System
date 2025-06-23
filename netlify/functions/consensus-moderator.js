@@ -19,7 +19,7 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    const { metricEvaluations, metric, teacherGuidelines } = JSON.parse(event.body);
+    const { metricEvaluations, metric, teacherGuidelines, apiSettings } = JSON.parse(event.body);
 
     // Check if API key exists
     if (!process.env.OPENAI_API_KEY) {
@@ -60,7 +60,7 @@ Format your response as JSON:
   "priorityRecommendations": ["top recommendation", "second recommendation"]
 }`;
 
-    console.log('Calling OpenAI API for consensus');
+    console.log('Calling OpenAI API for consensus with model:', apiSettings?.model || 'gpt-4o-mini');
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -69,7 +69,7 @@ Format your response as JSON:
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4',
+        model: apiSettings?.model || 'gpt-4o-mini',
         messages: [
           {
             role: 'system',
