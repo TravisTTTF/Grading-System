@@ -10,8 +10,21 @@ exports.handler = async (event, context) => {
     return { statusCode: 200, headers };
   }
 
+  if (event.httpMethod !== 'POST') {
+    return {
+      statusCode: 405,
+      headers,
+      body: JSON.stringify({ error: 'Method not allowed' })
+    };
+  }
+
   try {
     const { metricEvaluations, metric, teacherGuidelines } = JSON.parse(event.body);
+
+    // Check if API key exists
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error('OPENAI_API_KEY not configured in environment variables');
+    }
 
     const systemPrompt = `You are a Consensus Moderator AI specializing in engineering report evaluation.
 
@@ -47,6 +60,8 @@ Format your response as JSON:
   "priorityRecommendations": ["top recommendation", "second recommendation"]
 }`;
 
+    console.log('Calling OpenAI API for consensus');
+
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -71,32 +86,55 @@ Format your response as JSON:
     });
 
     if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.status}`);
+      const errorText = await response.text();
+      console.error('OpenAI API error:', response.status, errorText);
+      throw new Error(`OpenAI API error: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
+    
+    if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+      throw new Error('Invalid response from OpenAI API');
+    }
+
     const aiResponse = data.choices[0].message.content;
+    console.log('Received consensus response:', aiResponse);
 
     let parsedResponse;
     try {
       parsedResponse = JSON.parse(aiResponse);
     } catch (parseError) {
-      // Fallback consensus calculation
-      parsedResponse = calculateFallbackConsensus(metricEvaluations, metric);
+      console.error('Failed to parse consensus response as JSON:', parseError);
+      // Try to extract JSON from the response
+      const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        try {
+          parsedResponse = JSON.parse(jsonMatch[0]);
+        } catch (e) {
+          throw new Error('Consensus response is not valid JSON. Response: ' + aiResponse);
+        }
+      } else {
+        throw new Error('Consensus response does not contain valid JSON. Response: ' + aiResponse);
+      }
+    }
+
+    // Validate required fields
+    if (typeof parsedResponse.consensusScore !== 'number') {
+      throw new Error('Consensus response missing required "consensusScore" field');
     }
 
     // Validate and ensure all fields are present
     const validatedResponse = {
-      consensusScore: parsedResponse.consensusScore || calculateWeightedScore(metricEvaluations),
+      consensusScore: parsedResponse.consensusScore,
       reasoning: parsedResponse.reasoning || 'Consensus reached through weighted evaluation',
-      agreements: parsedResponse.agreements || ['General consensus on evaluation'],
-      disagreements: parsedResponse.disagreements || [],
+      agreements: Array.isArray(parsedResponse.agreements) ? parsedResponse.agreements : ['General consensus on evaluation'],
+      disagreements: Array.isArray(parsedResponse.disagreements) ? parsedResponse.disagreements : [],
       confidence: parsedResponse.confidence || 85,
-      flagsForReview: parsedResponse.flagsForReview || [],
+      flagsForReview: Array.isArray(parsedResponse.flagsForReview) ? parsedResponse.flagsForReview : [],
       synthesizedFeedback: parsedResponse.synthesizedFeedback || 'Comprehensive evaluation completed',
-      keyStrengths: parsedResponse.keyStrengths || [],
-      keyWeaknesses: parsedResponse.keyWeaknesses || [],
-      priorityRecommendations: parsedResponse.priorityRecommendations || []
+      keyStrengths: Array.isArray(parsedResponse.keyStrengths) ? parsedResponse.keyStrengths : [],
+      keyWeaknesses: Array.isArray(parsedResponse.keyWeaknesses) ? parsedResponse.keyWeaknesses : [],
+      priorityRecommendations: Array.isArray(parsedResponse.priorityRecommendations) ? parsedResponse.priorityRecommendations : []
     };
 
     return {
@@ -115,87 +153,9 @@ Format your response as JSON:
       headers,
       body: JSON.stringify({
         success: false,
-        error: error.message
+        error: error.message,
+        details: error.stack
       })
     };
   }
 };
-
-function calculateWeightedScore(evaluations) {
-  let totalScore = 0;
-  let totalWeight = 0;
-  
-  evaluations.forEach(eval => {
-    const weight = eval.isPrimary ? 0.6 : (0.4 / Math.max(1, evaluations.length - 1));
-    if (eval.evaluation && eval.evaluation.score !== undefined) {
-      totalScore += eval.evaluation.score * weight;
-      totalWeight += weight;
-    }
-  });
-  
-  return totalWeight > 0 ? Math.round(totalScore / totalWeight) : 75;
-}
-
-function calculateFallbackConsensus(evaluations, metric) {
-  const scores = evaluations.map(e => e.evaluation?.score || 75);
-  const weightedScore = calculateWeightedScore(evaluations);
-  
-  const maxScore = Math.max(...scores);
-  const minScore = Math.min(...scores);
-  const range = maxScore - minScore;
-  
-  const agreements = [];
-  const disagreements = [];
-  const flagsForReview = [];
-  
-  if (range <= 5) {
-    agreements.push(`Strong consensus on ${metric.name} evaluation (range: ${range} points)`);
-  } else if (range <= 10) {
-    agreements.push(`General agreement on ${metric.name} with minor variations (range: ${range} points)`);
-  } else {
-    disagreements.push(`Significant variation in ${metric.name} scores (range: ${range} points)`);
-    if (range > 15) {
-      flagsForReview.push(`Large score discrepancy (${range} points) requires instructor review`);
-    }
-  }
-  
-  // Check for low scores
-  if (weightedScore < 70) {
-    flagsForReview.push(`Score below industry standard (70%) - requires attention`);
-  }
-  
-  // Aggregate strengths and weaknesses
-  const allStrengths = [];
-  const allWeaknesses = [];
-  
-  evaluations.forEach(eval => {
-    if (eval.evaluation) {
-      if (eval.evaluation.specificStrengths) {
-        allStrengths.push(...eval.evaluation.specificStrengths);
-      }
-      if (eval.evaluation.specificWeaknesses) {
-        allWeaknesses.push(...eval.evaluation.specificWeaknesses);
-      }
-    }
-  });
-  
-  // Get unique top items
-  const keyStrengths = [...new Set(allStrengths)].slice(0, 2);
-  const keyWeaknesses = [...new Set(allWeaknesses)].slice(0, 2);
-  
-  const avgConfidence = evaluations.reduce((sum, e) => 
-    sum + (e.evaluation?.confidence || 80), 0) / evaluations.length;
-  
-  return {
-    consensusScore: weightedScore,
-    reasoning: `Weighted consensus: Primary evaluator (60%), Supporting evaluators (${40 / Math.max(1, evaluations.length - 1)}% each)`,
-    agreements: agreements,
-    disagreements: disagreements,
-    confidence: Math.round(avgConfidence),
-    flagsForReview: flagsForReview,
-    synthesizedFeedback: `Based on ${evaluations.length} expert evaluations for ${metric.name}`,
-    keyStrengths: keyStrengths.length > 0 ? keyStrengths : ['Meets basic requirements'],
-    keyWeaknesses: keyWeaknesses.length > 0 ? keyWeaknesses : ['Areas for improvement identified'],
-    priorityRecommendations: ['Focus on addressing identified weaknesses', 'Build upon existing strengths']
-  };
-}
