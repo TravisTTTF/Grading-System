@@ -439,11 +439,11 @@
                 }
                 
                 // Supporting agents
-                evaluations.filter(e => !e.isPrimary).forEach(eval => {
+                evaluations.filter(e => !e.isPrimary).forEach(evaluation => {
                     dialogue.push({
-                        agent: eval.agent.name,
-                        emoji: eval.agent.emoji,
-                        message: `From my perspective, I evaluated this at ${eval.evaluation.score}/100. ${eval.evaluation.feedback}`,
+                        agent: evaluation.agent.name,
+                        emoji: evaluation.agent.emoji,
+                        message: `From my perspective, I evaluated this at ${evaluation.evaluation.score}/100. ${evaluation.evaluation.feedback}`,
                         type: 'supporting-evaluation'
                     });
                 });
